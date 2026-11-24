@@ -129,10 +129,14 @@ AgentGuard::assertNothingDenied();
 
 ## Benchmarks
 
-Micro-benchmarks for the two hot paths (loop detection, budget reservation/reconciliation) live in [`benchmarks/loop-budget-bench.php`](benchmarks/loop-budget-bench.php). Run them locally and compare across versions:
+Two benchmarks ship in [`benchmarks/`](benchmarks/):
+
+- **[`loop-budget-bench.php`](benchmarks/loop-budget-bench.php)** — the **5-step loop reproducer** (the launch evidence asset): runs a runaway loop with and without the guard and reports tokens saved, USD saved, and the outcome (unbounded spiral vs. graceful degraded response).
+- **[`loop-budget-microbench.php`](benchmarks/loop-budget-microbench.php)** — per-step hot-path throughput (loop detection, budget reserve/reconcile) for performance regression tracking.
 
 ```bash
-php benchmarks/loop-budget-bench.php --runs=200000
+php benchmarks/loop-budget-bench.php                  # the loop reproducer
+php benchmarks/loop-budget-microbench.php --runs=200000
 ```
 
 See [`docs/benchmarks.md`](docs/benchmarks.md) for methodology and representative numbers.
