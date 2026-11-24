@@ -85,9 +85,11 @@ src/
   AgentGuard.php            # Core container / facade target
   AgentGuardServiceProvider.php
   Facades/AgentGuard.php
-  Support/                  # Framework-agnostic core: Fingerprint, TextUsage, Pricing/
+  Support/                  # Framework-agnostic core: Fingerprint, TextUsage, Pricing, CostEstimator
   Loop/                     # LoopGuard: detectors, breaker, kill switch
   Budget/                   # BudgetGuard: Ledger, drivers, Lua/
+  Downshift/                # DownshiftEngine + DownshiftTier (capability-cliff ladder)
+  Middleware/               # GuardAgentSteps (PendingStep wedge) + GuardRuntime
   Events/                   # Domain events (immutable value objects)
   Exceptions/               # Domain exceptions
 config/agent-guard.php      # Reference config
@@ -457,6 +459,36 @@ example app built on top of it, and to the README/docs.
 - **Pricing is data.** `prices.json` is versioned and synced by CI. Never
   inline a price in PHP. A missing price → USD null, but token budgets still
   enforce.
+
+### Downshift & GuardAgentSteps (Phase 3)
+
+- **`GuardAgentSteps` is the step-level wedge.** It implements the
+  `laravel/ai` `HasMiddleware` pipe (`handle(PendingStep, Closure): StepResult`)
+  and wraps every generation step with the kill-switch → breaker → reserve →
+  downshift → run → reconcile/detect pipeline. Never bypass it for guarded
+  agents.
+- **The downshift ladder is capability-cliff mitigation.** `DownshiftEngine`
+  picks the deepest tier whose spend-fraction threshold is crossed; each tier
+  swaps the model (`withModel`), drops tools (`withoutTools`), and tightens
+  the token ceiling (`withMaxTokens`) so a degraded-model retry cannot spiral.
+  `PendingStep` has **no `withMaxSteps()`** — step ceiling lives in
+  `TextGenerationOptions::$maxSteps`, not on the step.
+- **Default is observe; enforce activates the ladder.** `observe()` runs
+  detection + events only (no downshift, no breaker trip, no kill). `enforce()`
+  activates downshift, loop braking, and hard-cap halts. The middleware's
+  own enforce/observe flag governs the `BudgetGuard`, overriding the runtime
+  default.
+- **Reservation estimates come from the step, not magic numbers.** Input
+  tokens are estimated from the step's message content (`CostEstimator`);
+  USD is derived from the versioned `PricingCatalog`. Reconciliation replaces
+  the estimate with the exact `StepResponse->usage` via
+  `TextUsage::fromArray($usage->toArray())`.
+- **USD and token ledgers are separate keys.** The `BudgetGuard` prepends the
+  unit (`usd`/`tokens`) to the ledger key parts so the two never collide.
+- **Kill switch and breaker are shared global state.** `GuardRuntime` owns
+  one `KillSwitch` and one `CircuitBreaker` shared across all middleware
+  instances, so killing a tenant halts every guarded agent for that tenant.
+  The loop detector is per-run (sliding window is run-scoped state).
 
 ### AgentGuard facade
 

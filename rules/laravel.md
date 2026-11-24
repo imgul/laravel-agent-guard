@@ -46,11 +46,21 @@
 
 - laravel/ai middleware pipes have the contract
   `(PendingStep $step, Closure $next)` returning
-  `StepResult|StepResponse|Generator`.
+  `StepResult|StepResponse|Generator`. `GuardAgentSteps::handle()` returns
+  `StepResult` (use `StepResult::stop()` to halt before the model call).
 - `PendingStep` is readonly: `withModel(string)`, `withoutTools(string ...)`,
   `withTools()`, `withMaxTokens(?int)`. There is **no** `withMaxSteps()` —
   step ceiling is run-level via `TextGenerationOptions->maxSteps`.
 - Soft-cap downshift tightens via `withModel + withoutTools + withMaxTokens`.
+- `GuardAgentSteps` is the step-level wedge: kill-switch → breaker → reserve →
+  downshift → run → reconcile/detect. Build it via the fluent
+  `GuardAgentSteps::make()` factory. The `GuardRuntime` (singleton) owns the
+  shared `KillSwitch`, `CircuitBreaker`, `Ledger`, `CostEstimator`, and
+  `PricingCatalog`; the per-run `LoopDetector` lives on the middleware.
+- Reserve pessimistically from the step's message content, reconcile with the
+  exact `StepResponse->usage` (convert via `Support\TextUsage::fromArray($u->toArray())`).
+- USD and token ledgers are separate keys: the `BudgetGuard` prepends the
+  unit (`usd`/`tokens`) to the ledger key parts.
 
 ## Conventions
 
