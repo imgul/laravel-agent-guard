@@ -9,7 +9,6 @@ use Imgul\AgentGuard\Facades\AgentGuard;
 use Imgul\AgentGuard\Loop\ToolCall;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Testing\AgentGuardFake;
-use RuntimeException;
 
 beforeEach(function (): void {
     AgentGuard::fake();
@@ -83,13 +82,13 @@ it('records and asserts a downshift', function (): void {
 
 it('throws when an assertion has no matching recorded event', function (): void {
     expect(fn () => AgentGuard::assertLoopDetected('search'))
-        ->toThrow(RuntimeException::class, 'Expected a LoopDetected event for tool [search]');
+        ->toThrow(\RuntimeException::class, 'Expected a LoopDetected event for tool [search]');
 
     expect(fn () => AgentGuard::assertDownshifted('a', 'b'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(\RuntimeException::class);
 
     expect(fn () => AgentGuard::assertKillSwitchActivated('nope'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(\RuntimeException::class);
 });
 
 it('throws when assertions are used without fake()', function (): void {
@@ -97,8 +96,8 @@ it('throws when assertions are used without fake()', function (): void {
     $guard = new \Imgul\AgentGuard\AgentGuard([]);
 
     expect(fn () => $guard->assertNothingDenied())
-        ->toThrow(RuntimeException::class, 'AgentGuard::fake() must be called');
+        ->toThrow(\RuntimeException::class, 'AgentGuard::fake() must be called');
 
     expect(fn () => $guard->assertLoopDetected('search'))
-        ->toThrow(RuntimeException::class, 'AgentGuard::fake() must be called');
+        ->toThrow(\RuntimeException::class, 'AgentGuard::fake() must be called');
 });

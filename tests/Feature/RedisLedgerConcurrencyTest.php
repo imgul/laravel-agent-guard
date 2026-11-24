@@ -51,27 +51,30 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
     // each spend past the cap.
     $results = [];
     $workers = [];
+    $stdoutPipes = [];
 
     for ($i = 0; $i < 10; $i++) {
-        $workers[] = proc_open(
-            sprintf(
-                '%s -r %s',
-                escapeshellarg(PHP_BINARY),
-                escapeshellarg(
-                    '$r = new Redis(); $r->connect("127.0.0.1", 6379); '.
-                    '$script = file_get_contents('.var_export(__DIR__.'/../../src/Budget/Lua/reserve.lua', true).'); '.
-                    'echo $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1);'
-                ),
+        $command = sprintf(
+            '%s -r %s',
+            escapeshellarg(PHP_BINARY),
+            escapeshellarg(
+                '$r = new Redis(); $r->connect("127.0.0.1", 6379); '.
+                '$script = file_get_contents('.var_export(__DIR__.'/../../src/Budget/Lua/reserve.lua', true).'); '.
+                'echo $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1);'
             ),
-            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-            $pipes,
         );
+
+        $procPipes = [];
+        $workers[$i] = proc_open(
+            $command,
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $procPipes,
+        );
+        $stdoutPipes[$i] = $procPipes[1];
     }
 
     foreach ($workers as $i => $proc) {
-        $output = is_array($pipes[$i][1] ?? null)
-            ? stream_get_contents($pipes[$i][1])
-            : '';
+        $output = stream_get_contents($stdoutPipes[$i]);
         $results[] = (int) trim((string) $output);
         proc_close($proc);
     }

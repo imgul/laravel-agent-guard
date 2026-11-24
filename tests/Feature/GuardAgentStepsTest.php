@@ -182,7 +182,7 @@ it('downshifts the step model mid-run when a soft cap is breached', function ():
     $runtime = guardTestRuntime(enforce: true);
 
     $middleware = GuardAgentSteps::make($runtime)
-        ->budget(['run' => [soft: 1.00, hard: 5.00]])
+        ->budget(['run' => [1.00, 5.00]])
         ->downshiftAt(0.80, toModel: 'gpt-5-mini')
         ->enforce();
 
@@ -215,7 +215,7 @@ it('halts with a hard-cap exception when the reservation exceeds the cap', funct
     $runtime = guardTestRuntime(enforce: true);
 
     $middleware = GuardAgentSteps::make($runtime)
-        ->budget(['run' => [soft: 0.0, hard: 0.01]])
+        ->budget(['run' => [0.0, 0.01]])
         ->enforce();
 
     $next = fn (PendingStep $step): StepResult => guardTestResult();
@@ -242,7 +242,7 @@ it('stays inert in observe mode: no downshift, no breaker trip', function (): vo
     $runtime = guardTestRuntime(enforce: false);
 
     $middleware = GuardAgentSteps::make($runtime)
-        ->budget(['run' => [soft: 1.00, hard: 5.00]])
+        ->budget(['run' => [1.00, 5.00]])
         ->downshiftAt(0.80, toModel: 'gpt-5-mini')
         ->breakLoops(maxRepeats: 3)
         ->observe();
