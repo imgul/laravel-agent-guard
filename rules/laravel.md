@@ -62,6 +62,31 @@
 - USD and token ledgers are separate keys: the `BudgetGuard` prepends the
   unit (`usd`/`tokens`) to the ledger key parts.
 
+## MCP tool guarding (Phase 4)
+
+- `GuardedMcpTool` is a trait for `Laravel\Mcp\Server\Tool`. The SDK's
+  `ToolInvoker` calls `[$tool, 'handle']` via the container (which injects
+  `Laravel\Mcp\Request`). The trait **owns `handle()`** (the guarded entry
+  point) and delegates the actual work to `run()`, which the consuming tool
+  overrides.
+- The trait resolves the same `GuardRuntime` singleton as `GuardAgentSteps`
+  — one kill switch, one breaker, one ledger. One policy governs both the
+  AI-SDK agent surface and the MCP tool surface.
+- Correlation is **principal-based** (user_id / OAuth client_id / tenant id)
+  — never the `MCP-Session-Id` header. The scope key is
+  `tool:{toolName}:{principal}`. The loop detector is memoized per
+  tool+principal on `GuardRuntime::loopDetectorFor()`, so stateless MCP
+  requests share one sliding window.
+- `guardBudget(): array` returns
+  `['tool_daily_calls' => int, 'max_repeats' => int, 'tool_usd' => [soft, hard], 'tool_tokens' => [soft, hard]]`.
+  `tool_daily_calls` reserves 1.0 per call against the `Tool` scope
+  (`calls` unit) via the `Ledger` directly. `max_repeats` overrides the loop
+  detector threshold. Optional `tool_usd`/`tool_tokens` caps use `BudgetGuard`.
+- Hard-halts (kill switch, breaker, budget denial) return
+  `Laravel\Mcp\Response::error()` — not exceptions — matching the SDK's
+  `Errable` contract.
+- Default is observe; call `guardEnforce()` to activate the action ladder.
+
 ## Conventions
 
 - No business logic in controllers (N/A — no controllers). Keep

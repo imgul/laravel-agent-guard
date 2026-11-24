@@ -90,6 +90,7 @@ src/
   Budget/                   # BudgetGuard: Ledger, drivers, Lua/
   Downshift/                # DownshiftEngine + DownshiftTier (capability-cliff ladder)
   Middleware/               # GuardAgentSteps (PendingStep wedge) + GuardRuntime
+  Mcp/                      # GuardedMcpTool trait (MCP tool guard, Phase 4)
   Events/                   # Domain events (immutable value objects)
   Exceptions/               # Domain exceptions
 config/agent-guard.php      # Reference config
@@ -489,6 +490,39 @@ example app built on top of it, and to the README/docs.
   one `KillSwitch` and one `CircuitBreaker` shared across all middleware
   instances, so killing a tenant halts every guarded agent for that tenant.
   The loop detector is per-run (sliding window is run-scoped state).
+
+### GuardedMcpTool (Phase 4)
+
+- **`GuardedMcpTool` is the MCP tool guard.** A trait for
+  `Laravel\Mcp\Server\Tool` that wraps tool invocations with the same three
+  controls (budget, loop detector, kill switch) as agent steps. The SDK's
+  `ToolInvoker` calls `[$tool, 'handle']` via the container, so the trait
+  **owns `handle()`** (the guarded entry point) and delegates the actual
+  work to `run()`, which the consuming tool overrides.
+- **One policy governs both surfaces.** `GuardedMcpTool` resolves the same
+  `GuardRuntime` singleton (kill switch, breaker, ledger, estimator) as
+  `GuardAgentSteps`. Opening the kill switch for a tenant halts both agent
+  steps and MCP tool calls — no separate control plane.
+- **Correlation is principal-based, never session-based.** The scope key is
+  `tool:{toolName}:{principal}`, where the principal is the authenticated
+  user id, an OAuth client id, or a tenant id. **Never** use the
+  `MCP-Session-Id` header for correlation — stateless MCP is safe because
+  the loop detector's sliding window is memoized per tool+principal on the
+  shared `GuardRuntime`, so repeat calls across independent JSON-RPC
+  requests still trip the breaker.
+- **`guardBudget()` return shape.** `['tool_daily_calls' => int,
+  'max_repeats' => int, 'tool_usd' => [soft, hard], 'tool_tokens' =>
+  [soft, hard]]`. `tool_daily_calls` is a call-count budget on the `Tool`
+  scope (`calls` unit, 1.0 per invocation) reserved directly against the
+  `Ledger`. `max_repeats` overrides the loop detector's repeat threshold
+  for this tool. Optional `tool_usd`/`tool_tokens` caps use `BudgetGuard`
+  with an estimate derived from the argument payload.
+- **Default is observe; `guardEnforce()` activates the ladder.** Mirrors
+  `GuardAgentSteps`: observe runs detection + events only; enforce trips the
+  breaker on loop findings and denies calls that breach hard caps.
+- **Hard-halts return `Response::error()`, not exceptions.** The kill switch,
+  breaker, and budget-denial paths return an MCP error response (the SDK's
+  `Errable` contract), not a thrown exception.
 
 ### AgentGuard facade
 

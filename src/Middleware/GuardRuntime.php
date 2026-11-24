@@ -68,6 +68,36 @@ final class GuardRuntime
     }
 
     /**
+     * Get a cached LoopDetector for a persistent guarded scope.
+     *
+     * Unlike loopDetector(), the returned detector is memoized by scope
+     * for the lifetime of this runtime, so stateful loop detection works
+     * across multiple stateless requests — the MCP tool case, where each
+     * tool call is an independent JSON-RPC request that must still share
+     * one sliding window per tool+principal.
+     *
+     * @param  string  $scope
+     * @param  array<string, true>  $exemptTools
+     * @param  int|null  $maxRepeats  Override the runtime default for this scope.
+     */
+    public function loopDetectorFor(string $scope, array $exemptTools = [], ?int $maxRepeats = null): LoopDetector
+    {
+        return $this->loopDetectors[$scope] ??= new LoopDetector(
+            windowSize: $this->loopWindowSize,
+            maxRepeats: $maxRepeats ?? $this->loopMaxRepeats,
+            maxStepGrowthRatio: $this->loopMaxStepGrowthRatio,
+            similarity: $this->similarity,
+            exemptTools: $exemptTools,
+            dispatcher: $this->dispatcher,
+        );
+    }
+
+    /**
+     * @var array<string, LoopDetector>
+     */
+    private array $loopDetectors = [];
+
+    /**
      * Build a BudgetGuard against the ledger.
      */
     public function budgetGuard(): BudgetGuard
