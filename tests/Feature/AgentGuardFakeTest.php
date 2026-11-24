@@ -39,7 +39,7 @@ it('records and asserts a loop detection for a tool', function (): void {
     $detector->check($call, 10);
     $detector->check($call, 10);
 
-    expect(fn () => AgentGuard::assertLoopDetected('search'))->not->toThrow();
+    expect(fn () => AgentGuard::assertLoopDetected('search'))->not->toThrow(\Throwable::class);
 });
 
 it('records and asserts a budget soft-cap reach', function (): void {
@@ -52,8 +52,8 @@ it('records and asserts a budget soft-cap reach', function (): void {
     $guard->reserve(BudgetScope::Tenant, ['tenant-1', date('Y-m-d')], 0.50);
     $guard->reserve(BudgetScope::Tenant, ['tenant-1', date('Y-m-d')], 0.75);
 
-    expect(fn () => AgentGuard::assertBudgetSoftCapReached('tenant'))->not->toThrow();
-    expect(fn () => AgentGuard::assertNothingDenied())->not->toThrow();
+    expect(fn () => AgentGuard::assertBudgetSoftCapReached('tenant'))->not->toThrow(\Throwable::class);
+    expect(fn () => AgentGuard::assertNothingDenied())->not->toThrow(\Throwable::class);
 });
 
 it('records and asserts a budget hard-cap reach (observe, no throw)', function (): void {
@@ -66,7 +66,7 @@ it('records and asserts a budget hard-cap reach (observe, no throw)', function (
     // dispatched (no soft-cap event — the soft check is skipped when denied).
     $guard->reserve(BudgetScope::Tenant, ['tenant-2', date('Y-m-d')], 1.50);
 
-    expect(fn () => AgentGuard::assertBudgetHardCapReached('tenant'))->not->toThrow();
+    expect(fn () => AgentGuard::assertBudgetHardCapReached('tenant'))->not->toThrow(\Throwable::class);
 });
 
 it('records and asserts a downshift', function (): void {
@@ -78,7 +78,7 @@ it('records and asserts a downshift', function (): void {
         reason: 'budget-soft-cap',
     ));
 
-    expect(fn () => AgentGuard::assertDownshifted('claude-opus-4-1', 'claude-haiku-4-5'))->not->toThrow();
+    expect(fn () => AgentGuard::assertDownshifted('claude-opus-4-1', 'claude-haiku-4-5'))->not->toThrow(\Throwable::class);
 });
 
 it('throws when an assertion has no matching recorded event', function (): void {
