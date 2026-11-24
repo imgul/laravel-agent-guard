@@ -39,7 +39,7 @@ it('records and asserts a loop detection for a tool', function (): void {
     $detector->check($call, 10);
     $detector->check($call, 10);
 
-    AgentGuard::assertLoopDetected('search');
+    expect(fn () => AgentGuard::assertLoopDetected('search'))->not->toThrow();
 });
 
 it('records and asserts a budget soft-cap reach', function (): void {
@@ -52,8 +52,8 @@ it('records and asserts a budget soft-cap reach', function (): void {
     $guard->reserve(BudgetScope::Tenant, ['tenant-1', date('Y-m-d')], 0.50);
     $guard->reserve(BudgetScope::Tenant, ['tenant-1', date('Y-m-d')], 0.75);
 
-    AgentGuard::assertBudgetSoftCapReached('tenant');
-    AgentGuard::assertNothingDenied();
+    expect(fn () => AgentGuard::assertBudgetSoftCapReached('tenant'))->not->toThrow();
+    expect(fn () => AgentGuard::assertNothingDenied())->not->toThrow();
 });
 
 it('records and asserts a budget hard-cap reach (observe, no throw)', function (): void {
@@ -62,10 +62,11 @@ it('records and asserts a budget hard-cap reach (observe, no throw)', function (
     $guard->cap(BudgetScope::Tenant, softCap: 1.00, hardCap: 1.00);
 
     // Spend past the hard cap in observe mode records but does not throw.
+    // A hard-cap breach denies outright, so only a hard-cap event is
+    // dispatched (no soft-cap event — the soft check is skipped when denied).
     $guard->reserve(BudgetScope::Tenant, ['tenant-2', date('Y-m-d')], 1.50);
 
-    AgentGuard::assertBudgetSoftCapReached('tenant');
-    AgentGuard::assertBudgetHardCapReached('tenant');
+    expect(fn () => AgentGuard::assertBudgetHardCapReached('tenant'))->not->toThrow();
 });
 
 it('records and asserts a downshift', function (): void {
@@ -77,7 +78,7 @@ it('records and asserts a downshift', function (): void {
         reason: 'budget-soft-cap',
     ));
 
-    AgentGuard::assertDownshifted('claude-opus-4-1', 'claude-haiku-4-5');
+    expect(fn () => AgentGuard::assertDownshifted('claude-opus-4-1', 'claude-haiku-4-5'))->not->toThrow();
 });
 
 it('throws when an assertion has no matching recorded event', function (): void {
