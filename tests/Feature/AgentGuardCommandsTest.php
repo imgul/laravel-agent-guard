@@ -16,9 +16,10 @@ it('agent-guard:status reports the runtime overview without a tenant', function 
     $code = Artisan::call('agent-guard:status');
 
     expect($code)->toBe(0);
-    expect(Artisan::output())->toContain('laravel-agent-guard status');
-    expect(Artisan::output())->toContain('mode');
-    expect(Artisan::output())->toContain('driver');
+    $output = Artisan::output();
+    expect($output)->toContain('laravel-agent-guard status');
+    expect($output)->toContain('mode');
+    expect($output)->toContain('driver');
 });
 
 it('agent-guard:status shows a tenant kill switch as OPEN after a kill', function (): void {

@@ -53,7 +53,7 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
     // capture the parent client's host/port/database and inject them.
     $host = $client->getHost();
     $port = $client->getPort();
-    $db = $client->getDB();
+    $db = $client->getDbNum();
 
     $results = [];
     $workers = [];

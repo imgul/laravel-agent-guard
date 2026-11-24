@@ -265,7 +265,7 @@ it('stays inert in observe mode: no downshift, no breaker trip', function (): vo
 
     expect($capturedModel)->toBe('gpt-5')
         ->and($runtime->breaker->isOpen('run'))->toBeFalse()
-        ->and(Event::dispatched(ModelDownshifted::class))->toBeFalse();
+        ->and(Event::dispatched(ModelDownshifted::class))->toBeEmpty();
 });
 
 it('hard-halts when the kill switch is open for the run', function (): void {
