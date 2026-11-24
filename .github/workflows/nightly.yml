@@ -1,0 +1,59 @@
+name: Nightly (SDK 1.x-dev)
+
+# Early-warning job for breaking changes in the fast-moving laravel/ai and
+# laravel/mcp 1.x SDKs. Runs against the latest 1.x-dev branches instead of
+# stable releases, so adapter drift (PendingStep, withModel, AgentResponse
+# usage, MCP Tool) is caught before it hits a stable-release build.
+
+on:
+    schedule:
+        - cron: '0 3 * * *'
+    workflow_dispatch:
+
+jobs:
+    nightly:
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - laravel: '12'
+                      testbench: '^10.6'
+                    - laravel: '13'
+                      testbench: '^11.0'
+
+        name: Nightly Laravel ${{ matrix.laravel }} (1.x-dev)
+
+        services:
+            redis:
+                image: redis:7-alpine
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.3'
+                  extensions: mbstring, dom, xml, sqlite3, redis, curl
+                  coverage: none
+
+            - name: Install dependencies pinned to 1.x-dev
+              run: |
+                  composer require "laravel/ai:1.x-dev" "laravel/mcp:1.x-dev" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-progress --with-all-dependencies
+                  composer dump-autoload
+
+            - name: Report resolved SDK versions
+              run: |
+                  composer show laravel/ai laravel/mcp | grep -E '^(name|versions)' || true
+
+            - name: Run tests
+              run: vendor/bin/pest --colors=always

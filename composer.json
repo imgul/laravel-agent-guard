@@ -1,0 +1,62 @@
+{
+    "name": "imgul/laravel-agent-guard",
+    "description": "Step-aware loop braking, atomic multi-tenant token/USD budgets, and graceful model downshift for Laravel AI agents and MCP tool servers.",
+    "keywords": [
+        "laravel",
+        "ai",
+        "agent",
+        "mcp",
+        "budget",
+        "loop-protection",
+        "safety"
+    ],
+    "license": "MIT",
+    "type": "library",
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/redis": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
+        "laravel/ai": "^1.0",
+        "laravel/mcp": "^1.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.20",
+        "orchestra/testbench": "^10.6|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-laravel": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Imgul\\AgentGuard\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Imgul\\AgentGuard\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        },
+        "laravel": {
+            "providers": [
+                "Imgul\\AgentGuard\\AgentGuardServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test",
+        "format": "pint",
+        "stan": "phpstan analyse"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}
