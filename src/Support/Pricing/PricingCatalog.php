@@ -27,7 +27,7 @@ final class PricingCatalog
     public function __construct(
         public readonly string $version,
         private readonly array $models,
-        private readonly array $overrides = [],
+        private array $overrides = [],
     ) {}
 
     /**

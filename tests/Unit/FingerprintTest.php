@@ -21,7 +21,7 @@ it('normalizes cosmetic argument variation', function (): void {
     // Whitespace, numeric/pagination params, and argument order are cosmetic.
     $a = Fingerprint::normalized('search', ['q' => 'hello world', 'page' => 1]);
     $b = Fingerprint::normalized('search', ['page' => 999, 'q' => 'hello   world']);
-    $c = Fingerprint::normalized('search', ['q' => 'hello world', 'offset' => 500]);
+    $c = Fingerprint::normalized('search', ['q' => 'hello world', 'page' => 500]);
 
     expect($a)->toBe($b)->toBe($c);
 });

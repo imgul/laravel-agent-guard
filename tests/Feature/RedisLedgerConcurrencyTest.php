@@ -48,7 +48,13 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
 
     // Fire 10 concurrent reservations. Each is a single atomic Lua round-trip,
     // so the server serializes them — no two workers can pass the check and
-    // each spend past the cap.
+    // each spend past the cap. The workers run as separate PHP processes that
+    // must connect to the *same* Redis database the parent reads from, so
+    // capture the parent client's host/port/database and inject them.
+    $host = $client->getHost();
+    $port = $client->getPort();
+    $db = $client->getDB();
+
     $results = [];
     $workers = [];
     $stdoutPipes = [];
@@ -58,7 +64,8 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
             '%s -r %s',
             escapeshellarg(PHP_BINARY),
             escapeshellarg(
-                '$r = new Redis(); $r->connect("127.0.0.1", 6379); '.
+                '$r = new Redis(); $r->connect('.var_export($host, true).', '.var_export($port, true).'); '.
+                '$r->select('.var_export($db, true).'); '.
                 '$script = file_get_contents('.var_export(__DIR__.'/../../src/Budget/Lua/reserve.lua', true).'); '.
                 'echo $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1);'
             ),

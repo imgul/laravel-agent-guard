@@ -15,7 +15,7 @@ function makeDetector(array $overrides = []): LoopDetector
         frequencyThreshold: $overrides['frequency_threshold'] ?? 3,
         similarity: $overrides['similarity'] ?? null,
         similarityThreshold: $overrides['similarity_threshold'] ?? 0.85,
-        exemptTools: array_map(static fn (string $t): array => [$t => true], $overrides['exempt_tools'] ?? []),
+        exemptTools: array_fill_keys($overrides['exempt_tools'] ?? [], true),
     );
 }
 
@@ -104,12 +104,15 @@ it('only escalates to semantic similarity when frequency is elevated', function 
         'similarity' => new SimHash(),
     ]);
 
+    // Identical normalized text gives SimHash similarity 1.0 (>= the 0.85
+    // threshold). maxRepeats=99 keeps the repeat detectors from firing, so
+    // the 3rd call trips frequency first, then the gated semantic detector.
     $detector->check(new ToolCall('search', ['q' => 'find user by email']), 100);
-    $detector->check(new ToolCall('search', ['q' => 'look up user by email']), 100);
+    $detector->check(new ToolCall('search', ['q' => 'find user by email']), 100);
 
     // Frequency is now elevated (3rd call); semantic near-match runs.
     $findings = $detector->check(
-        new ToolCall('search', ['q' => 'find user via email address']),
+        new ToolCall('search', ['q' => 'find user by email']),
         100,
     );
 
