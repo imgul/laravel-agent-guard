@@ -1,5 +1,5 @@
 includes:
-    - vendor/phpstan/phpstan-laravel/extension.neon
+    - vendor/larastan/larastan/extension.neon
 
 parameters:
     level: max
