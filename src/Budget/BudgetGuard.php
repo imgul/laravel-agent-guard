@@ -13,8 +13,8 @@ use Illuminate\Contracts\Events\Dispatcher;
 /**
  * BudgetGuard: multi-tenant token/USD budget enforcement.
  *
- * Four scopes (run / agent / tenant / tool), each in tokens and USD
- * (PRD FR-2.1). Reservations are pessimistic and atomic (ledger-dependent),
+ * Four scopes (run / agent / tenant / tool), each enforceable in tokens and
+ * USD (PRD FR-2.1). Reservations are pessimistic and atomic (ledger-dependent),
  * reconciled with exact usage after the step (FR-2.2, FR-2.3).
  *
  * The three-stage action ladder (FR-2.4):
@@ -24,21 +24,20 @@ use Illuminate\Contracts\Events\Dispatcher;
  * machine-readable denial.
  *
  * Budget keys derive from tenant/principal context — never agent-supplied
- * values (FR-2.6, ARCHITECTURE §10).
+ * values (FR-2.6, ARCHITECTURE §10). Each scope keeps separate USD and
+ * token ledgers (the unit is part of the key) so the two never collide.
  */
 final class BudgetGuard
 {
-    /**
-     * Per-scope cap configuration: [softCap, hardCap] in the ledger's unit.
-     *
-     * @var array<BudgetScope, array{soft: float, hard: float}>
-     */
-    private array $caps = [];
+    public const string UNIT_USD = 'usd';
+    public const string UNIT_TOKENS = 'tokens';
 
     /**
-     * @var array<string, float>  run-scoped reservations awaiting reconciliation
+     * Per-scope-per-unit cap configuration: unit -> [softCap, hardCap].
+     *
+     * @var array<string, array<string, array{soft: float, hard: float}>>
      */
-    private array $pending = [];
+    private array $caps = [];
 
     public function __construct(
         private readonly Ledger $ledger,
@@ -47,39 +46,40 @@ final class BudgetGuard
     ) {}
 
     /**
-     * Configure a scope's soft/hard caps. A hard cap of 0 means unlimited.
-     * A soft cap of 0 means no soft-cap signal (skip downshift trigger).
+     * Configure a scope's soft/hard caps in a unit. A hard cap of 0 means
+     * unlimited. A soft cap of 0 means no soft-cap signal (skip downshift
+     * trigger).
      */
-    public function cap(BudgetScope $scope, float $softCap, float $hardCap): self
+    public function cap(BudgetScope $scope, float $softCap, float $hardCap, string $unit = self::UNIT_USD): self
     {
-        $this->caps[$scope->value] = ['soft' => $softCap, 'hard' => $hardCap];
+        $this->caps[$scope->value][$unit] = ['soft' => $softCap, 'hard' => $hardCap];
 
         return $this;
     }
 
     /**
-     * Whether a scope has a configured hard cap.
+     * Whether a scope/unit has a configured hard cap.
      */
-    public function hasHardCap(BudgetScope $scope): bool
+    public function hasHardCap(BudgetScope $scope, string $unit = self::UNIT_USD): bool
     {
-        return isset($this->caps[$scope->value]) && $this->caps[$scope->value]['hard'] > 0;
+        return isset($this->caps[$scope->value][$unit]['hard']) && $this->caps[$scope->value][$unit]['hard'] > 0;
     }
 
     /**
-     * Reserve cost against a scope's caps.
+     * Reserve cost against a scope/unit's caps.
      *
      * In observe mode this records and emits events but never denies.
      * In enforce mode a hard-cap breach halts with BudgetExceededException.
      *
      * @param  list<string>  $keyParts  tenant/agent/period segments (tenant-derived)
      */
-    public function reserve(BudgetScope $scope, array $keyParts, float $cost): BudgetResult
+    public function reserve(BudgetScope $scope, array $keyParts, float $cost, string $unit = self::UNIT_USD): BudgetResult
     {
-        $caps = $this->caps[$scope->value] ?? ['soft' => 0.0, 'hard' => 0.0];
+        $caps = $this->caps[$scope->value][$unit] ?? ['soft' => 0.0, 'hard' => 0.0];
 
         $reservation = new BudgetReservation(
             scope: $scope,
-            keyParts: $keyParts,
+            keyParts: array_merge([$unit], $keyParts),
             cost: $cost,
             softCap: $caps['soft'],
             hardCap: $caps['hard'],
@@ -126,13 +126,15 @@ final class BudgetGuard
      *
      * @param  list<string>  $keyParts
      */
-    public function reconcile(BudgetScope $scope, array $keyParts, float $reserved, TextUsage $usage, float $unitCost): float
+    public function reconcile(BudgetScope $scope, array $keyParts, float $reserved, TextUsage $usage, float $unitCost, string $unit = self::UNIT_USD): float
     {
-        $actual = $unitCost * $usage->totalTokens() / 1000.0;
+        $actual = $unit === self::UNIT_USD
+            ? $unitCost * $usage->totalTokens() / 1000.0
+            : (float) $usage->totalTokens();
 
         $reservation = new BudgetReservation(
             scope: $scope,
-            keyParts: $keyParts,
+            keyParts: array_merge([$unit], $keyParts),
             cost: $reserved,
             softCap: 0.0,
             hardCap: 0.0,
@@ -143,14 +145,14 @@ final class BudgetGuard
     }
 
     /**
-     * Current spend for a scope key.
+     * Current spend for a scope/unit key.
      *
      * @param  list<string>  $keyParts
      */
-    public function spent(BudgetScope $scope, array $keyParts): float
+    public function spent(BudgetScope $scope, array $keyParts, string $unit = self::UNIT_USD): float
     {
         return $this->ledger->spent(
-            'agent-guard:budget:'.$scope->value.':'.implode(':', $keyParts),
+            'agent-guard:budget:'.$scope->value.':'.$unit.':'.implode(':', $keyParts),
         );
     }
 

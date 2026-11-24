@@ -31,6 +31,12 @@ return [
 
     'driver' => env('AGENT_GUARD_LEDGER', 'redis'),
 
+    'kill_switch' => env('AGENT_GUARD_KILL_SWITCH', true),
+
+    'estimate' => [
+        'output_tokens' => 256,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Loop detection
