@@ -73,7 +73,7 @@ final class AgentGuardFake extends GuardRuntime
     public function assertLoopDetected(string $tool): void
     {
         $this->expect(
-            $this->recorder->recordedMatching(LoopDetected::class, fn (LoopDetected $e): bool => $e->tool === $tool),
+            $this->recorder->recordedMatching(LoopDetected::class, fn (LoopDetected $e): bool => $e->tool === $tool) !== null,
             "Expected a LoopDetected event for tool [{$tool}], but none was recorded.",
         );
     }
@@ -87,7 +87,7 @@ final class AgentGuardFake extends GuardRuntime
     public function assertDownshifted(string $from, string $to): void
     {
         $this->expect(
-            $this->recorder->recordedMatching(ModelDownshifted::class, fn (ModelDownshifted $e): bool => $e->fromModel === $from && $e->toModel === $to),
+            $this->recorder->recordedMatching(ModelDownshifted::class, fn (ModelDownshifted $e): bool => $e->fromModel === $from && $e->toModel === $to) !== null,
             "Expected a ModelDownshifted event from [{$from}] to [{$to}], but none was recorded.",
         );
     }
@@ -102,7 +102,7 @@ final class AgentGuardFake extends GuardRuntime
     public function assertBudgetSoftCapReached(string $scope): void
     {
         $this->expect(
-            $this->recorder->recordedMatching(BudgetSoftCapReached::class, fn (BudgetSoftCapReached $e): bool => $e->scope->value === $scope),
+            $this->recorder->recordedMatching(BudgetSoftCapReached::class, fn (BudgetSoftCapReached $e): bool => $e->scope->value === $scope) !== null,
             "Expected a BudgetSoftCapReached event for scope [{$scope}], but none was recorded.",
         );
     }
@@ -117,7 +117,7 @@ final class AgentGuardFake extends GuardRuntime
     public function assertBudgetHardCapReached(string $scope): void
     {
         $this->expect(
-            $this->recorder->recordedMatching(BudgetHardCapReached::class, fn (BudgetHardCapReached $e): bool => $e->scope->value === $scope),
+            $this->recorder->recordedMatching(BudgetHardCapReached::class, fn (BudgetHardCapReached $e): bool => $e->scope->value === $scope) !== null,
             "Expected a BudgetHardCapReached event for scope [{$scope}], but none was recorded.",
         );
     }
@@ -131,7 +131,7 @@ final class AgentGuardFake extends GuardRuntime
     public function assertKillSwitchActivated(string $tenant): void
     {
         $this->expect(
-            $this->recorder->recordedMatching(KillSwitchActivated::class, fn (KillSwitchActivated $e): bool => $e->key === $tenant),
+            $this->recorder->recordedMatching(KillSwitchActivated::class, fn (KillSwitchActivated $e): bool => $e->key === $tenant) !== null,
             "Expected a KillSwitchActivated event for [{$tenant}], but none was recorded.",
         );
     }
@@ -144,7 +144,7 @@ final class AgentGuardFake extends GuardRuntime
     public function assertCircuitTripped(string $key): void
     {
         $this->expect(
-            $this->recorder->recordedMatching(CircuitTripped::class, fn (CircuitTripped $e): bool => $e->key === $key),
+            $this->recorder->recordedMatching(CircuitTripped::class, fn (CircuitTripped $e): bool => $e->key === $key) !== null,
             "Expected a CircuitTripped event for [{$key}], but none was recorded.",
         );
     }

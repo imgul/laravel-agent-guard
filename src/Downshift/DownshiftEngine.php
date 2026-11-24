@@ -20,14 +20,21 @@ namespace Imgul\AgentGuard\Downshift;
 final class DownshiftEngine
 {
     /**
-     * @param  list<DownshiftTier>  $tiers  ordered by threshold ascending
+     * @var  list<DownshiftTier>  sorted by threshold ascending
      */
-    public function __construct(
-        private readonly array $tiers,
-    ) {
+    private readonly array $tiers;
+
+    /**
+     * @param  list<DownshiftTier>  $tiers  sorted by threshold ascending
+     */
+    public function __construct(array $tiers)
+    {
         // Sort by threshold ascending so the deepest applicable tier is the
-        // last one the spend fraction crosses.
-        usort($this->tiers, fn (DownshiftTier $a, DownshiftTier $b): int => $a->threshold <=> $b->threshold);
+        // last one the spend fraction crosses. Readonly properties cannot be
+        // mutated after initialisation, so sort a local copy then assign once.
+        usort($tiers, fn (DownshiftTier $a, DownshiftTier $b): int => $a->threshold <=> $b->threshold);
+
+        $this->tiers = $tiers;
     }
 
     /**

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard;
 
+use Illuminate\Support\Arr;
 use Imgul\AgentGuard\Budget\BudgetGuard;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Testing\AgentGuardFake;
-use function Illuminate\Support\data_get;
 
 /**
  * Core runtime container for laravel-agent-guard.
@@ -75,7 +75,7 @@ final class AgentGuard
      */
     public function config(string $key, $default = null)
     {
-        return data_get($this->config, $key, $default);
+        return Arr::get($this->config, $key, $default);
     }
 
     // -----------------------------------------------------------------

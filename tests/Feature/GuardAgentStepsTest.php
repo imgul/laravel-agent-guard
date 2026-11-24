@@ -12,6 +12,7 @@ use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
 use Illuminate\Support\Facades\Event;
+use Laravel\Ai\Gateway\StepResponse;
 use Laravel\Ai\Gateway\StepResult;
 use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Messages\MessageRole;
@@ -20,7 +21,6 @@ use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\TextUsage as SdkTextUsage;
 use Laravel\Ai\Responses\Data\ToolCall as SdkToolCall;
-use Laravel\Ai\Responses\Data\StepResponse;
 
 /**
  * Phase 3 hard gates: the GuardAgentSteps step-level wedge.
