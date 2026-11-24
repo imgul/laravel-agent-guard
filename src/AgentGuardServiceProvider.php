@@ -96,6 +96,12 @@ final class AgentGuardServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Imgul\AgentGuard\Console\AgentGuardStatusCommand::class,
+                \Imgul\AgentGuard\Console\AgentGuardKillCommand::class,
+                \Imgul\AgentGuard\Console\AgentGuardBudgetsCommand::class,
+            ]);
+
             $this->publishes(
                 [__DIR__.'/../config/agent-guard.php' => config_path('agent-guard.php')],
                 'agent-guard-config',

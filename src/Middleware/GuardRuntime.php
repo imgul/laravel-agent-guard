@@ -25,7 +25,7 @@ use Illuminate\Contracts\Events\Dispatcher;
  * The loop detector is intentionally per-run (created fresh by the
  * middleware) because its sliding window is run-scoped state.
  */
-final class GuardRuntime
+class GuardRuntime
 {
     public readonly KillSwitch $killSwitch;
 

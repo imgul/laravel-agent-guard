@@ -87,6 +87,25 @@
   `Errable` contract.
 - Default is observe; call `guardEnforce()` to activate the action ladder.
 
+## Testing & Artisan commands (Phase 5)
+
+- `AgentGuard::fake()` rebinds `GuardRuntime::class` in the container to an
+  `AgentGuardFake` (extends `GuardRuntime`, so it is **not final**). The fake
+  swaps the `Ledger` for `InMemoryLedger` and the `Dispatcher` for
+  `RecordingDispatcher` — zero side effects on real Redis or the production
+  event bus, but app-level listeners still fire (the recorder delegates).
+- The fake records every decision; assert via `AgentGuard::assertLoopDetected`,
+  `assertDownshifted`, `assertBudgetSoftCapReached`,
+  `assertBudgetHardCapReached`, `assertKillSwitchActivated`,
+  `assertCircuitTripped`, `assertNothingDenied`. Each throws a
+  `RuntimeException` when the event was not recorded.
+- Artisan commands are registered in the service provider's `boot()` via
+  `$this->commands([...])`: `agent-guard:status {tenant?}`,
+  `agent-guard:kill {--tenant=}`, `agent-guard:budgets {tenant}`.
+- Operational facade methods (`kill`/`unkill`/`status`/`budgets`/`reconcile`)
+  delegate to the shared `GuardRuntime`. Budget keys built by `status`/`budgets`
+  must mirror `GuardAgentSteps::keyPartsFor` so reported spend matches writes.
+
 ## Conventions
 
 - No business logic in controllers (N/A — no controllers). Keep

@@ -91,6 +91,8 @@ src/
   Downshift/                # DownshiftEngine + DownshiftTier (capability-cliff ladder)
   Middleware/               # GuardAgentSteps (PendingStep wedge) + GuardRuntime
   Mcp/                      # GuardedMcpTool trait (MCP tool guard, Phase 4)
+  Testing/                  # AgentGuardFake + InMemoryLedger + RecordingDispatcher (Phase 5)
+  Console/                  # Artisan commands: status / kill / budgets (Phase 5)
   Events/                   # Domain events (immutable value objects)
   Exceptions/               # Domain exceptions
 config/agent-guard.php      # Reference config
@@ -523,6 +525,40 @@ example app built on top of it, and to the README/docs.
 - **Hard-halts return `Response::error()`, not exceptions.** The kill switch,
   breaker, and budget-denial paths return an MCP error response (the SDK's
   `Errable` contract), not a thrown exception.
+
+### Testing, Artisan commands & operational API (Phase 5)
+
+- **`AgentGuardFake` extends `GuardRuntime`** (so `GuardRuntime` is
+  deliberately **not** `final`). It swaps the `Ledger` for `InMemoryLedger`
+  and the `Dispatcher` for `RecordingDispatcher`, so every decision
+  (allowed / denied / downshifted / tripped) is recorded with **zero side
+  effects** on real Redis or the production event bus. `AgentGuard::fake()`
+  rebinds `GuardRuntime::class` in the container and returns the fake.
+- **`RecordingDispatcher`** extends `Illuminate\Events\Dispatcher`, records
+  every dispatched event, and **delegates delivery to the real bus** so
+  app-level listeners still fire. Only `dispatch()` is overridden; the
+  guard components only ever call `dispatch()`.
+- **`InMemoryLedger`** mirrors the `RedisLedger` reservation/reconciliation
+  contract (per-key spend, soft/hard cap evaluation) in process memory.
+- **Assertion API (API §6).** `AgentGuard::assertLoopDetected(tool:)`,
+  `assertDownshifted(from:, to:)`, `assertBudgetSoftCapReached(scope:)`,
+  `assertBudgetHardCapReached(scope:)`, `assertKillSwitchActivated(tenant:)`,
+  `assertCircuitTripped(key:)`, `assertNothingDenied()`. Each throws a
+  `RuntimeException` with a descriptive message when the matching event was
+  not recorded. Assertions require `fake()` first.
+- **Operational facade methods (API §4).** `kill(tenant:)`,
+  `unkill(tenant:)`, `status(tenant:)` (returns mode/driver/kill-switch/
+  breaker/budgets), `budgets(tenant:)` (per-scope spend vs caps),
+  `reconcile(runId:)`. These delegate to the shared `GuardRuntime`.
+- **Artisan commands (API §7).** `agent-guard:status {tenant?}`,
+  `agent-guard:kill {--tenant=}`, `agent-guard:budgets {tenant}` —
+  registered in the service provider's `boot()` via `$this->commands([...])`.
+- **Budget key mapping is shared.** `AgentGuard::budgets()` / `status()`
+  build ledger keys with the **same** `keyPartsFor()` mapping as
+  `GuardAgentSteps`, so reported spend matches what the middleware writes.
+  Config keys are `{scope}_{unit}` or `{scope}_{period}_{unit}` — the unit
+  is the **final** segment (`tenant_daily_tokens` → `tokens`); call-count
+  caps (e.g. `tool_daily_calls`) are skipped as non-ledger.
 
 ### AgentGuard facade
 
