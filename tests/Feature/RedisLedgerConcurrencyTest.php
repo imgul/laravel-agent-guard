@@ -71,8 +71,12 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
             escapeshellarg(
                 '$r = new Redis(); $r->connect('.var_export($host, true).', '.var_export($port, true).'); '.
                 '$r->select('.var_export($db, true).'); '.
+                '$pre = $r->get('.var_export($key, true).'); '.
+                'fwrite(STDERR, "db=".var_export('.var_export($db, true).', true).' spent=".var_export($pre, true).'\\n"); '.
                 '$script = file_get_contents('.var_export($luaPath, true).'); '.
-                'echo $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1);'
+                '$code = $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1); '.
+                'fwrite(STDERR, "code=".var_export($code, true).'\\n"); '.
+                'echo $code;'
             ),
         );
 
