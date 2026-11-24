@@ -1,0 +1,20 @@
+# VS Code Copilot Instructions — laravel-agent-guard
+
+VS Code Copilot loads `.github/copilot-instructions.md` as project
+instructions.
+
+**The canonical rules live in [`AGENTS.md`](../AGENTS.md).** Read it in full
+before making any change. Focused per-topic rules are in the
+[`rules/`](../rules/) directory:
+
+- `rules/php.md` — PHP 8.3 type system, PSR, SOLID, error handling
+- `rules/laravel.md` — Laravel 12/13 package conventions
+- `rules/code-quality.md` — review mindset, anti-patterns, severity labels
+- `rules/security.md` — security audit methodology, tenant isolation, atomicity
+- `rules/performance.md` — profiling method, package-specific optimizations
+- `rules/ui-ux.md` — UI/UX and accessibility
+- `rules/composer.md` — Composer constraints, dependency audit
+- `rules/testing.md` — Pest structure, hard gates, coverage
+
+Agent skills are installed under `.agents/skills/` from skills.sh (Vercel).
+Always follow the rules in AGENTS.md; they are the source of truth.
