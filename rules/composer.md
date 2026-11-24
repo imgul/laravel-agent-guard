@@ -24,8 +24,8 @@
 | `laravel/mcp` | `^1.0` | MCP SDK |
 | `pestphp/*` | `^3.0\|^4.0` | dev |
 | `orchestra/testbench` | `^10.6\|^11.0` | dev |
-| `phpstan/phpstan` | `^2.1` | dev, level max |
-| `phpstan/phpstan-laravel` | `^2.0` | dev |
+| `phpstan/phpstan` | `^2.3` | dev, level max |
+| `larastan/larastan` | `^3.0` | dev, PHPStan Laravel extension |
 | `laravel/pint` | `^1.20` | dev |
 
 ## Audit & supply chain
