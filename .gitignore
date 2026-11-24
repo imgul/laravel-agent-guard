@@ -1,0 +1,11 @@
+/vendor/
+/node_modules/
+/.phpunit.result.cache
+/.phpunit.cache
+/coverage/
+/.pint-cache
+/.phpstan-cache
+/.idea/
+/.vscode/
+*.log
+.DS_Store

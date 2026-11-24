@@ -1,0 +1,60 @@
+name: Tests
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - laravel: '12'
+                      testbench: '^10.6'
+                    - laravel: '13'
+                      testbench: '^11.0'
+
+        name: Laravel ${{ matrix.laravel }}
+
+        services:
+            redis:
+                image: redis:7-alpine
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.3'
+                  extensions: mbstring, dom, xml, sqlite3, redis, curl
+                  coverage: none
+
+            - name: Install dependencies
+              run: |
+                  composer require "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-progress --with-all-dependencies
+                  composer dump-autoload
+
+            - name: Run tests
+              run: vendor/bin/pest --colors=always
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: pest-results-laravel-${{ matrix.laravel }}
+                  path: .phpunit.result.cache
+                  if-no-files-found: ignore
