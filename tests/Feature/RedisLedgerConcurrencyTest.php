@@ -50,14 +50,19 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
     // so the server serializes them — no two workers can pass the check and
     // each spend past the cap. The workers run as separate PHP processes that
     // must connect to the *same* Redis database the parent reads from, so
-    // capture the parent client's host/port/database and inject them.
+    // capture the parent client's host/port/database and inject them. The
+    // Lua script path is absolute (computed here) because __DIR__ is not
+    // reliable inside a `php -r` inline script.
+    $luaPath = __DIR__.'/../../src/Budget/Lua/reserve.lua';
     $host = $client->getHost();
     $port = $client->getPort();
     $db = $client->getDbNum();
 
     $results = [];
+    $stderrs = [];
     $workers = [];
     $stdoutPipes = [];
+    $stderrPipes = [];
 
     for ($i = 0; $i < 10; $i++) {
         $command = sprintf(
@@ -66,7 +71,7 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
             escapeshellarg(
                 '$r = new Redis(); $r->connect('.var_export($host, true).', '.var_export($port, true).'); '.
                 '$r->select('.var_export($db, true).'); '.
-                '$script = file_get_contents('.var_export(__DIR__.'/../../src/Budget/Lua/reserve.lua', true).'); '.
+                '$script = file_get_contents('.var_export($luaPath, true).'); '.
                 'echo $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1);'
             ),
         );
@@ -78,17 +83,30 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
             $procPipes,
         );
         $stdoutPipes[$i] = $procPipes[1];
+        $stderrPipes[$i] = $procPipes[2];
     }
 
     foreach ($workers as $i => $proc) {
         $output = stream_get_contents($stdoutPipes[$i]);
+        $stderr = stream_get_contents($stderrPipes[$i]);
         $results[] = (int) trim((string) $output);
+        $stderrs[] = trim((string) $stderr);
         proc_close($proc);
     }
 
     // Exactly 5 reservations must succeed (return 1), 5 denied (return 0).
     $allowed = count(array_filter($results, fn (int $code): bool => $code === 1));
     $denied = count(array_filter($results, fn (int $code): bool => $code === 0));
+
+    // If the workers did not produce the expected 5 allowed, surface their
+    // stderr so the failure is diagnosable (worker script errors, missing
+    // redis extension, wrong DB, etc.).
+    if ($allowed !== 5 || $denied !== 5) {
+        throw new RuntimeException(
+            'Concurrency workers produced '.$allowed.' allowed / '.$denied.' denied. '.
+            'Worker stderr: '.implode(' | ', $stderrs),
+        );
+    }
 
     expect($allowed)->toBe(5)
         ->and($denied)->toBe(5)
