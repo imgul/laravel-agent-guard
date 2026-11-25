@@ -54,4 +54,19 @@ final class InMemorySwitchStore implements SwitchStore
     {
         return $this->get($key) !== null;
     }
+
+    public function keys(string $prefix): array
+    {
+        $matching = [];
+
+        foreach (array_keys($this->store) as $key) {
+            if (str_starts_with($key, $prefix)) {
+                $matching[] = $key;
+            }
+        }
+
+        sort($matching);
+
+        return $matching;
+    }
 }

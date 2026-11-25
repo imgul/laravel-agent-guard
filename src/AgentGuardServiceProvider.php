@@ -11,6 +11,9 @@ use Imgul\AgentGuard\Budget\Drivers\DatabaseLedger;
 use Imgul\AgentGuard\Budget\Drivers\RedisLedger;
 use Imgul\AgentGuard\Budget\Ledger;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
+use Imgul\AgentGuard\Switch\DatabaseSwitchStore;
+use Imgul\AgentGuard\Switch\RedisSwitchStore;
+use Imgul\AgentGuard\Switch\SwitchStore;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
 use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
@@ -78,6 +81,20 @@ final class AgentGuardServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(SwitchStore::class, function (Container $container): SwitchStore {
+            /** @var Repository $config */
+            $config = $container->make('config');
+
+            if ($config->get('agent-guard.driver') === 'database') {
+                return new DatabaseSwitchStore();
+            }
+
+            /** @var \Redis $client */
+            $client = $container->make('redis')->connection()->client();
+
+            return new RedisSwitchStore($client);
+        });
+
         $this->app->singleton(GuardRuntime::class, function (Container $container): GuardRuntime {
             /** @var Repository $config */
             $config = $container->make('config');
@@ -93,6 +110,7 @@ final class AgentGuardServiceProvider extends ServiceProvider
                 loopWindowSize: self::intConfig($config, 'agent-guard.loop.window_size', 50),
                 loopMaxRepeats: self::intConfig($config, 'agent-guard.loop.max_repeats', 3),
                 loopMaxStepGrowthRatio: self::floatConfig($config, 'agent-guard.loop.max_step_growth_ratio', 2.5),
+                switchStore: $container->make(SwitchStore::class),
             );
         });
     }

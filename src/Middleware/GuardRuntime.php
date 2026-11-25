@@ -11,6 +11,7 @@ use Imgul\AgentGuard\Downshift\DownshiftTier;
 use Imgul\AgentGuard\Loop\CircuitBreaker;
 use Imgul\AgentGuard\Loop\KillSwitch;
 use Imgul\AgentGuard\Loop\LoopDetector;
+use Imgul\AgentGuard\Switch\SwitchStore;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -43,9 +44,11 @@ class GuardRuntime
         public readonly int $loopWindowSize = 50,
         public readonly int $loopMaxRepeats = 3,
         public readonly float $loopMaxStepGrowthRatio = 2.5,
+        ?SwitchStore $switchStore = null,
     ) {
-        $this->killSwitch = new KillSwitch(dispatcher: $dispatcher);
+        $this->killSwitch = new KillSwitch(store: $switchStore, dispatcher: $dispatcher);
         $this->breaker = new CircuitBreaker(
+            store: $switchStore,
             cooldownSeconds: $loopCooldownSeconds,
             dispatcher: $dispatcher,
         );
