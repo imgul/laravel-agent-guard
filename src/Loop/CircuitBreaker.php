@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Imgul\AgentGuard\Loop;
 
 use Imgul\AgentGuard\Events\CircuitTripped;
+use Imgul\AgentGuard\Switch\InMemorySwitchStore;
 use Imgul\AgentGuard\Switch\SwitchStore;
 use Illuminate\Contracts\Events\Dispatcher;
 
@@ -28,12 +29,16 @@ use Illuminate\Contracts\Events\Dispatcher;
  */
 final class CircuitBreaker
 {
+    private readonly SwitchStore $store;
+
     public function __construct(
-        private readonly SwitchStore $store,
+        ?SwitchStore $store = null,
         private readonly int $cooldownSeconds = 60,
         private readonly bool $halfOpenProbe = true,
         private readonly ?Dispatcher $dispatcher = null,
-    ) {}
+    ) {
+        $this->store = $store ?? new InMemorySwitchStore;
+    }
 
     /**
      * Current state for a scoped key (defaults to CLOSED).
