@@ -58,7 +58,9 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
     $host = $client->getHost();
     $port = $client->getPort();
     $db = $client->getDbNum();
-    $prefix = (string) $client->getOption(\Redis::OPT_PREFIX);
+    /** @var string|false $prefixOption */
+    $prefixOption = $client->getOption(\Redis::OPT_PREFIX);
+    $prefix = $prefixOption === false ? '' : $prefixOption;
 
     $results = [];
     $stderrs = [];

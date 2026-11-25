@@ -117,11 +117,17 @@ class GuardedTestTool extends Tool
     /** @var array<string, mixed> */
     public array $guardConfig = [];
 
+    /**
+     * @param  array<string, mixed>  $guardConfig
+     */
     public function __construct(array $guardConfig = [])
     {
         $this->guardConfig = $guardConfig;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function guardBudget(): array
     {
         return $this->guardConfig;
@@ -155,6 +161,7 @@ it('runs the tool normally when no control is triggered', function (): void {
     app()->instance(GuardRuntime::class, $runtime);
 
     $tool = new GuardedTestTool();
+    /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
     expect($response)->toBeInstanceOf(Response::class)
@@ -171,6 +178,7 @@ it('hard-halts with a Response::error when the kill switch is open', function ()
     $runtime->killSwitch->kill('tool', 'tool:test_guarded_tool:anonymous');
 
     $tool = new GuardedTestTool();
+    /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
     expect($response)->toBeInstanceOf(Response::class)
@@ -194,6 +202,7 @@ it('trips the circuit breaker on a repeated tool call', function (): void {
     $errored = false;
 
     for ($i = 0; $i < 6; $i++) {
+        /** @var Response $response */
         $response = $tool->handle(mcpTestRequest(['q' => 'same query']));
 
         if ($response->isError()) {
@@ -216,6 +225,7 @@ it('denies the call when the daily call-count cap is exceeded in enforce mode', 
     $tool = new GuardedTestTool(['tool_daily_calls' => 2]);
     $tool->guardEnforce();
 
+    /** @var list<Response> $responses */
     $responses = [];
 
     for ($i = 0; $i < 4; $i++) {
@@ -239,6 +249,7 @@ it('allows the call to proceed past the cap in observe mode', function (): void 
 
     // 4 calls — all should proceed in observe mode (no denial).
     for ($i = 0; $i < 4; $i++) {
+        /** @var Response $response */
         $response = $tool->handle(mcpTestRequest(['q' => 'call '.$i]));
 
         expect($response->isError())->toBeFalse();
@@ -254,6 +265,7 @@ it('shares the kill switch with agent steps: one policy governs both surfaces', 
     $runtime->killSwitch->kill('tool', 'tool:test_guarded_tool:anonymous');
 
     $tool = new GuardedTestTool();
+    /** @var Response $mcpResponse */
     $mcpResponse = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
     // The MCP tool is halted by the same kill switch that would halt an
@@ -275,6 +287,7 @@ it('correlates by principal, not by session id', function (): void {
     // The scope key must embed the principal, not a session id.
     $scopeKey = 'tool:test_guarded_tool:tenant-42';
 
+    /** @var list<Response> $responses */
     $responses = [];
 
     for ($i = 0; $i < 4; $i++) {
@@ -300,6 +313,7 @@ it('uses the authenticated user as the default principal', function (): void {
     // authenticated user. In the testbench context (no auth), it resolves
     // to 'anonymous', and the scope key is deterministic.
     $tool = new GuardedTestTool();
+    /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
     expect($response->isError())->toBeFalse()
