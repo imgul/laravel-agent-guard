@@ -47,7 +47,9 @@ final class CircuitBreaker
     {
         $data = $this->load($key);
 
-        return $data['state'] ?? LoopState::Closed;
+        $raw = $data['state'] ?? null;
+
+        return $raw === null ? LoopState::Closed : LoopState::from((string) $raw);
     }
 
     /**
@@ -89,7 +91,9 @@ final class CircuitBreaker
     {
         $data = $this->load($key);
 
-        if (! isset($data['state']) || $data['state'] !== LoopState::Open) {
+        $rawState = $data['state'] ?? null;
+
+        if ($rawState === null || $rawState !== LoopState::Open->value) {
             return false;
         }
 
@@ -157,14 +161,30 @@ final class CircuitBreaker
     /**
      * Snapshot of all scoped breaker states.
      *
-     * @return array<string, string>
+     * @return array<string, string>  key => state value
      */
     public function snapshot(): array
     {
-        // The SwitchStore does not expose enumeration for Redis/cache
-        // without a scan. For the status command, this returns the
-        // known keys. Run-scoped keys are transient and not reported.
-        return [];
+        $prefix = $this->storageKey('');
+        $snapshot = [];
+
+        foreach ($this->store->keys($prefix) as $storedKey) {
+            // Trim the prefix to recover the scoped key.
+            $key = substr($storedKey, strlen($prefix));
+
+            if ($key === '') {
+                continue;
+            }
+
+            $data = $this->load($key);
+            $raw = $data['state'] ?? null;
+
+            if ($raw !== null) {
+                $snapshot[$key] = (string) $raw;
+            }
+        }
+
+        return $snapshot;
     }
 
     /**

@@ -42,4 +42,24 @@ final class RedisSwitchStore implements SwitchStore
     {
         return $this->redis->exists($key) > 0;
     }
+
+    public function keys(string $prefix): array
+    {
+        $matching = [];
+
+        // Redis SCAN is the only safe way to iterate keys without blocking.
+        $iterator = null;
+
+        while ($keys = $this->redis->scan($iterator, $prefix.'*', 100)) {
+            foreach ($keys as $key) {
+                if ($key !== false) {
+                    $matching[] = (string) $key;
+                }
+            }
+        }
+
+        sort($matching);
+
+        return $matching;
+    }
 }

@@ -44,4 +44,14 @@ final class DatabaseSwitchStore implements SwitchStore
     {
         return Cache::store($this->storeName)->has($key);
     }
+
+    /**
+     * Cache stores do not expose key enumeration. Full enumeration
+     * requires Redis (recommended for production switch state). Returns
+     * an empty array so callers degrade gracefully.
+     */
+    public function keys(string $prefix): array
+    {
+        return [];
+    }
 }

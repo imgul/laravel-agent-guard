@@ -113,15 +113,17 @@ final class KillSwitch
      */
     public function anyOpen(): bool
     {
-        return $this->isGloballyOpen();
+        foreach ($this->store->keys('kill:') as $key) {
+            if ($this->store->get($key) === '1') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
-     * All currently open scope/key pairs.
-     *
-     * NOTE: This scans known scope prefixes. For the full list with
-     * arbitrary run keys, use the SwitchStore directly or track via
-     * events. The status command only needs global + tenant scopes.
+     * All currently open scope/key pairs, grouped by scope.
      *
      * @return array<string, list<string>>
      */
@@ -129,8 +131,22 @@ final class KillSwitch
     {
         $open = [];
 
-        if ($this->isGloballyOpen()) {
-            $open['global'] = [self::GLOBAL_KEY];
+        foreach ($this->store->keys('kill:') as $storedKey) {
+            if ($this->store->get($storedKey) !== '1') {
+                continue;
+            }
+
+            // Stored key format: kill:{scope}:{key}
+            $parts = explode(':', $storedKey, 3);
+
+            if (count($parts) < 3) {
+                continue;
+            }
+
+            $scope = $parts[1];
+            $key = $parts[2];
+
+            $open[$scope][] = $key;
         }
 
         return $open;

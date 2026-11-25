@@ -36,4 +36,12 @@ interface SwitchStore
      * Whether the key exists in storage.
      */
     public function has(string $key): bool;
+
+    /**
+     * Return all keys matching the given prefix. Used for enumeration
+     * (e.g. listing open kill-switch scopes for the status command).
+     *
+     * @return list<string>
+     */
+    public function keys(string $prefix): array;
 }

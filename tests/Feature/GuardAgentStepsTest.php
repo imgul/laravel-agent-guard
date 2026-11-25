@@ -186,12 +186,13 @@ it('downshifts the step model mid-run when a soft cap is breached', function ():
     $runtime = guardTestRuntime(enforce: true);
 
     $middleware = GuardAgentSteps::make($runtime)
-        ->budget(['run' => [1.00, 5.00]])
+        ->budget(['run' => [0.002, 0.01]])
         ->downshiftAt(0.80, toModel: 'gpt-5-mini')
         ->enforce();
 
-    // Step 0: a large message reserves enough USD to cross the $1.00 soft
-    // cap (input ~ enough tokens * price). The downshift fires for this step.
+    // Step 0: a large message reserves enough USD to cross the $0.002 soft
+    // cap (input ~ 1250 tokens * $1.25/1M ≈ $0.0016 + output ≈ $0.001).
+    // The downshift fires for this step.
     $capturedModel = null;
 
     $next = function (PendingStep $step) use (&$capturedModel): StepResult {
@@ -219,12 +220,13 @@ it('halts with a hard-cap exception when the reservation exceeds the cap', funct
     $runtime = guardTestRuntime(enforce: true);
 
     $middleware = GuardAgentSteps::make($runtime)
-        ->budget(['run' => [0.0, 0.01]])
+        ->budget(['run' => [0.0, 0.005]])
         ->enforce();
 
     $next = fn (PendingStep $step): StepResult => guardTestResult();
 
-    // A message large enough to reserve more than the $0.01 hard cap.
+    // A message large enough to reserve more than the $0.005 hard cap
+    // (~4000 input tokens * $1.25/1M ≈ $0.005).
     $exception = null;
 
     try {
