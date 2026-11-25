@@ -13,22 +13,22 @@ use Imgul\AgentGuard\Support\Similarity\SimHash;
 function makeDetector(array $overrides = []): LoopDetector
 {
     /** @var int $windowSize */
-    $windowSize = (int) ($overrides['window_size'] ?? 50);
+    $windowSize = is_numeric($overrides['window_size'] ?? null) ? (int) $overrides['window_size'] : 50;
 
     /** @var int $maxRepeats */
-    $maxRepeats = (int) ($overrides['max_repeats'] ?? 3);
+    $maxRepeats = is_numeric($overrides['max_repeats'] ?? null) ? (int) $overrides['max_repeats'] : 3;
 
     /** @var float $maxStepGrowthRatio */
-    $maxStepGrowthRatio = (float) ($overrides['max_step_growth_ratio'] ?? 2.5);
+    $maxStepGrowthRatio = is_numeric($overrides['max_step_growth_ratio'] ?? null) ? (float) $overrides['max_step_growth_ratio'] : 2.5;
 
     /** @var int $frequencyThreshold */
-    $frequencyThreshold = (int) ($overrides['frequency_threshold'] ?? 3);
+    $frequencyThreshold = is_numeric($overrides['frequency_threshold'] ?? null) ? (int) $overrides['frequency_threshold'] : 3;
 
     /** @var SimilarityStrategy|null $similarity */
     $similarity = $overrides['similarity'] ?? null;
 
     /** @var float $similarityThreshold */
-    $similarityThreshold = (float) ($overrides['similarity_threshold'] ?? 0.85);
+    $similarityThreshold = is_numeric($overrides['similarity_threshold'] ?? null) ? (float) $overrides['similarity_threshold'] : 0.85;
 
     /** @var list<string> $exemptTools */
     $exemptTools = $overrides['exempt_tools'] ?? [];

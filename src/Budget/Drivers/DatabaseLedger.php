@@ -100,7 +100,7 @@ final class DatabaseLedger implements Ledger
      * Build the raw SQL adjustment expression for a numeric excess.
      *
      * @param  float  $excess
-     * @return literal-string
+     * @return string
      */
     private function rawAdjustment(float $excess): string
     {

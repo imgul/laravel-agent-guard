@@ -49,7 +49,10 @@ final class AgentGuardServiceProvider extends ServiceProvider
                 return new DatabaseLedger();
             }
 
-            return new RedisLedger($container->make('redis')->connection()->client());
+            /** @var \Redis $client */
+            $client = $container->make('redis')->connection()->client();
+
+            return new RedisLedger($client);
         });
 
         $this->app->singleton(PricingCatalog::class, function (Container $container): PricingCatalog {

@@ -106,7 +106,7 @@ final class AgentGuard
      * Per-tenant status: mode, driver, kill-switch state, breaker state,
      * and budget spend vs configured caps.
      *
-     * @return array{mode: string, driver: string, kill_switch: bool, breaker: string, budgets: array<string, array{cap: float|null, spent: float>}}
+     * @return array{mode: string, driver: string, kill_switch: bool, breaker: string, budgets: array<string, array{cap: float|null, spent: float}>}
      */
     public function status(string $tenantId): array
     {
@@ -140,6 +140,10 @@ final class AgentGuard
         $result = [];
 
         foreach ($defaults as $key => $cap) {
+            if (! is_string($key)) {
+                continue;
+            }
+
             $scope = $this->budgetScope($key);
             $unit = $this->budgetUnit($key);
 

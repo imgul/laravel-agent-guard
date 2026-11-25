@@ -164,8 +164,7 @@ it('runs the tool normally when no control is triggered', function (): void {
     /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
-    expect($response)->toBeInstanceOf(Response::class)
-        ->and($response->isError())->toBeFalse()
+    expect($response->isError())->toBeFalse()
         ->and($tool->calls)->toHaveCount(1);
 });
 
@@ -181,8 +180,7 @@ it('hard-halts with a Response::error when the kill switch is open', function ()
     /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
-    expect($response)->toBeInstanceOf(Response::class)
-        ->and($response->isError())->toBeTrue()
+    expect($response->isError())->toBeTrue()
         ->and($tool->calls)->toHaveCount(0);
 });
 
@@ -233,8 +231,8 @@ it('denies the call when the daily call-count cap is exceeded in enforce mode', 
     }
 
     // The first 2 calls succeed; the 3rd is denied by the hard cap.
-    $successCount = count(array_filter($responses, fn (Response $r): bool => ! $r->isError()));
-    $errorCount = count(array_filter($responses, fn (Response $r): bool => $r->isError()));
+    $successCount = count(array_filter($responses, fn (iterable|Response $r): bool => $r instanceof Response && ! $r->isError()));
+    $errorCount = count(array_filter($responses, fn (iterable|Response $r): bool => $r instanceof Response && $r->isError()));
 
     expect($successCount)->toBe(2)
         ->and($errorCount)->toBe(2);
@@ -295,7 +293,7 @@ it('correlates by principal, not by session id', function (): void {
     }
 
     // Two calls succeed, two are denied — all correlated to tenant-42.
-    $successCount = count(array_filter($responses, fn (Response $r): bool => ! $r->isError()));
+    $successCount = count(array_filter($responses, fn (iterable|Response $r): bool => $r instanceof Response && ! $r->isError()));
 
     expect($successCount)->toBe(2)
         ->and($runtime->breaker->isOpen($scopeKey))->toBeFalse()

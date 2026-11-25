@@ -247,7 +247,7 @@ trait GuardedMcpTool
     {
         $this->guardPrincipalResolver = $resolver instanceof Closure
             ? $resolver
-            : fn (Request $request): string => (string) app($resolver);
+            : fn (Request $request): string => is_string(app($resolver)) ? app($resolver) : '';
 
         return $this;
     }
@@ -412,8 +412,8 @@ trait GuardedMcpTool
                 continue;
             }
 
-            $soft = (float) ($cap[0] ?? 0.0);
-            $hard = (float) ($cap[1] ?? 0.0);
+            $soft = is_numeric($cap[0] ?? null) ? (float) $cap[0] : 0.0;
+            $hard = is_numeric($cap[1] ?? null) ? (float) $cap[1] : 0.0;
 
             $budget->cap(BudgetScope::Tool, $soft, $hard, $unit);
 

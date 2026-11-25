@@ -33,6 +33,7 @@ function redisAvailable(): bool
 
 it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend', function (): void {
     if (! redisAvailable()) {
+        // @phpstan-ignore-next-line
         skip('Redis server not reachable; concurrency gate runs in CI.');
     }
 
@@ -129,6 +130,7 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
 
 it('signals soft-cap breach via the same atomic call', function (): void {
     if (! redisAvailable()) {
+        // @phpstan-ignore-next-line
         skip('Redis server not reachable; runs in CI.');
     }
 
@@ -159,6 +161,7 @@ it('signals soft-cap breach via the same atomic call', function (): void {
 
 it('reconciles a reservation back to actual spend', function (): void {
     if (! redisAvailable()) {
+        // @phpstan-ignore-next-line
         skip('Redis server not reachable; runs in CI.');
     }
 
