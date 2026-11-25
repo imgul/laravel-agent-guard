@@ -50,12 +50,15 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
     // so the server serializes them — no two workers can pass the check and
     // each spend past the cap. The workers run as separate PHP processes (a
     // standalone worker script spawned with proc_open) that must connect to
-    // the *same* Redis database the parent reads from, so capture the parent
-    // client's host/port/database and pass them as arguments.
+    // the *same* Redis database and use the *same* key prefix the parent
+    // client uses, so capture the parent client's host/port/database/prefix
+    // and pass them as arguments. Without the prefix the raw worker client
+    // would read/write a different physical key than the parent's RedisLedger.
     $luaPath = __DIR__.'/../../src/Budget/Lua/reserve.lua';
     $host = $client->getHost();
     $port = $client->getPort();
     $db = $client->getDbNum();
+    $prefix = (string) $client->getOption(\Redis::OPT_PREFIX);
 
     $results = [];
     $stderrs = [];
@@ -71,6 +74,7 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
             escapeshellarg((string) $host),
             escapeshellarg((string) $port),
             escapeshellarg((string) $db),
+            escapeshellarg($prefix),
             escapeshellarg($key),
             escapeshellarg($luaPath),
         ]);
