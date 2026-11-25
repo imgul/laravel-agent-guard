@@ -11,6 +11,7 @@ use Imgul\AgentGuard\Middleware\GuardAgentSteps;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Facades\Event;
 use Laravel\Ai\Gateway\StepResponse;
 use Laravel\Ai\Gateway\StepResult;
@@ -90,11 +91,14 @@ function guardTestRuntime(bool $enforce = false, ?Ledger $ledger = null): GuardR
         ],
     ]);
 
+    /** @var Dispatcher $dispatcher */
+    $dispatcher = app('events');
+
     return new GuardRuntime(
         ledger: $ledger ?? guardTestLedger(),
         estimator: new CostEstimator($catalog, defaultOutputTokens: 100),
         similarity: null,
-        dispatcher: app('events'),
+        dispatcher: $dispatcher,
         enforce: $enforce,
         killSwitchEnabled: true,
         loopCooldownSeconds: 60,

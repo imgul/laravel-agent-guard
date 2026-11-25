@@ -37,11 +37,11 @@ final class TextUsage
     public static function fromArray(array $data): self
     {
         return new self(
-            inputTokens: (int) ($data['input_tokens'] ?? 0),
-            outputTokens: (int) ($data['output_tokens'] ?? 0),
-            cacheReadInputTokens: isset($data['cache_read_input_tokens']) ? (int) $data['cache_read_input_tokens'] : null,
-            cacheWriteInputTokens: isset($data['cache_write_input_tokens']) ? (int) $data['cache_write_input_tokens'] : null,
-            reasoningTokens: isset($data['reasoning_tokens']) ? (int) $data['reasoning_tokens'] : null,
+            inputTokens: self::intFrom($data, 'input_tokens'),
+            outputTokens: self::intFrom($data, 'output_tokens'),
+            cacheReadInputTokens: isset($data['cache_read_input_tokens']) ? self::intFrom($data, 'cache_read_input_tokens') : null,
+            cacheWriteInputTokens: isset($data['cache_write_input_tokens']) ? self::intFrom($data, 'cache_write_input_tokens') : null,
+            reasoningTokens: isset($data['reasoning_tokens']) ? self::intFrom($data, 'reasoning_tokens') : null,
         );
     }
 
@@ -76,7 +76,7 @@ final class TextUsage
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @return array<string, int|null>
      */
     public function toArray(): array
     {
@@ -87,6 +87,18 @@ final class TextUsage
             'cache_write_input_tokens' => $this->cacheWriteInputTokens,
             'reasoning_tokens' => $this->reasoningTokens,
         ];
+    }
+
+    /**
+     * Read an int field from a payload, defaulting when absent or non-numeric.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function intFrom(array $data, string $key, int $default = 0): int
+    {
+        $value = $data[$key] ?? $default;
+
+        return is_numeric($value) ? (int) $value : $default;
     }
 
     private static function sum(?int $a, ?int $b): ?int

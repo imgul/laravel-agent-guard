@@ -7,6 +7,7 @@ namespace Imgul\AgentGuard\Middleware;
 use Imgul\AgentGuard\Budget\BudgetGuard;
 use Imgul\AgentGuard\Budget\Ledger;
 use Imgul\AgentGuard\Downshift\DownshiftEngine;
+use Imgul\AgentGuard\Downshift\DownshiftTier;
 use Imgul\AgentGuard\Loop\CircuitBreaker;
 use Imgul\AgentGuard\Loop\KillSwitch;
 use Imgul\AgentGuard\Loop\LoopDetector;

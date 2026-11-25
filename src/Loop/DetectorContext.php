@@ -15,6 +15,8 @@ final class DetectorContext
     /**
      * @param  list<ToolCall>  $window
      * @param  array<string, true>  $exemptTools
+     * @param  list<string>  $lastOutputFingerprints
+     * @param  list<string>  $currentOutputFingerprints
      */
     public function __construct(
         public readonly array $window,

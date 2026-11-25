@@ -33,7 +33,10 @@ final class AgentGuardServiceProvider extends ServiceProvider
             /** @var Repository $config */
             $config = $container->make('config');
 
-            return new AgentGuard($config->get('agent-guard', []));
+            /** @var array<string, mixed> $agentGuardConfig */
+            $agentGuardConfig = $config->get('agent-guard', []);
+
+            return new AgentGuard($agentGuardConfig);
         });
 
         $this->app->alias(AgentGuard::class, 'agent-guard');
@@ -46,14 +49,15 @@ final class AgentGuardServiceProvider extends ServiceProvider
                 return new DatabaseLedger();
             }
 
-            return new RedisLedger($container->make('redis')->connection());
+            return new RedisLedger($container->make('redis')->connection()->client());
         });
 
         $this->app->singleton(PricingCatalog::class, function (Container $container): PricingCatalog {
             /** @var Repository $config */
             $config = $container->make('config');
 
-            $path = (string) $config->get(
+            $path = self::stringConfig(
+                $config,
                 'agent-guard.pricing.catalog',
                 __DIR__.'/../src/Support/Pricing/prices.json',
             );
@@ -67,7 +71,7 @@ final class AgentGuardServiceProvider extends ServiceProvider
 
             return new CostEstimator(
                 pricing: $container->make(PricingCatalog::class),
-                defaultOutputTokens: (int) $config->get('agent-guard.estimate.output_tokens', 256),
+                defaultOutputTokens: self::intConfig($config, 'agent-guard.estimate.output_tokens', 256),
             );
         });
 
@@ -80,12 +84,12 @@ final class AgentGuardServiceProvider extends ServiceProvider
                 estimator: $container->make(CostEstimator::class),
                 similarity: $this->resolveSimilarity($config),
                 dispatcher: $container->make('events'),
-                enforce: (string) $config->get('agent-guard.mode') === 'enforce',
-                killSwitchEnabled: (bool) $config->get('agent-guard.kill_switch', true),
-                loopCooldownSeconds: (int) $config->get('agent-guard.loop.breaker.cooldown_seconds', 60),
-                loopWindowSize: (int) $config->get('agent-guard.loop.window_size', 50),
-                loopMaxRepeats: (int) $config->get('agent-guard.loop.max_repeats', 3),
-                loopMaxStepGrowthRatio: (float) $config->get('agent-guard.loop.max_step_growth_ratio', 2.5),
+                enforce: self::stringConfig($config, 'agent-guard.mode', 'observe') === 'enforce',
+                killSwitchEnabled: self::boolConfig($config, 'agent-guard.kill_switch', true),
+                loopCooldownSeconds: self::intConfig($config, 'agent-guard.loop.breaker.cooldown_seconds', 60),
+                loopWindowSize: self::intConfig($config, 'agent-guard.loop.window_size', 50),
+                loopMaxRepeats: self::intConfig($config, 'agent-guard.loop.max_repeats', 3),
+                loopMaxStepGrowthRatio: self::floatConfig($config, 'agent-guard.loop.max_step_growth_ratio', 2.5),
             );
         });
     }
@@ -114,13 +118,62 @@ final class AgentGuardServiceProvider extends ServiceProvider
      */
     private function resolveSimilarity(Repository $config): ?SimilarityStrategy
     {
-        $strategy = (string) $config->get('agent-guard.loop.similarity', 'simhash');
+        $strategy = self::stringConfig($config, 'agent-guard.loop.similarity', 'simhash');
 
-        return match ($strategy) {
-            'none' => null,
-            'simhash' => new SimHash(),
-            'trigram' => new TrigramJaccard(),
-            default => $this->app->make($strategy),
-        };
+        if ($strategy === 'none') {
+            return null;
+        }
+
+        if ($strategy === 'simhash') {
+            return new SimHash();
+        }
+
+        if ($strategy === 'trigram') {
+            return new TrigramJaccard();
+        }
+
+        $resolved = $this->app->make($strategy);
+
+        return $resolved instanceof SimilarityStrategy ? $resolved : null;
+    }
+
+    /**
+     * Read a string config value with a typed fallback (avoids casting mixed).
+     */
+    private static function stringConfig(Repository $config, string $key, string $default): string
+    {
+        $value = $config->get($key, $default);
+
+        return is_string($value) ? $value : $default;
+    }
+
+    /**
+     * Read an int config value with a typed fallback.
+     */
+    private static function intConfig(Repository $config, string $key, int $default): int
+    {
+        $value = $config->get($key, $default);
+
+        return is_int($value) ? $value : $default;
+    }
+
+    /**
+     * Read a float config value with a typed fallback (accepts int or float).
+     */
+    private static function floatConfig(Repository $config, string $key, float $default): float
+    {
+        $value = $config->get($key, $default);
+
+        return is_int($value) || is_float($value) ? (float) $value : $default;
+    }
+
+    /**
+     * Read a bool config value with a typed fallback.
+     */
+    private static function boolConfig(Repository $config, string $key, bool $default): bool
+    {
+        $value = $config->get($key, $default);
+
+        return is_bool($value) ? $value : $default;
     }
 }

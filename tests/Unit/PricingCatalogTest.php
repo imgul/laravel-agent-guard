@@ -64,6 +64,7 @@ it('allows mutating overrides at runtime', function (): void {
 });
 
 it('builds from a decoded array via fromArray', function (): void {
+    /** @var array<string, mixed> $data */
     $data = json_decode((string) file_get_contents(__DIR__.'/../../src/Support/Pricing/prices.json'), true);
 
     $catalog = PricingCatalog::fromArray($data);

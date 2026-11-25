@@ -4,18 +4,43 @@ declare(strict_types=1);
 
 use Imgul\AgentGuard\Loop\LoopDetector;
 use Imgul\AgentGuard\Loop\ToolCall;
+use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 use Imgul\AgentGuard\Support\Similarity\SimHash;
 
+/**
+ * @param  array<string, mixed>  $overrides
+ */
 function makeDetector(array $overrides = []): LoopDetector
 {
+    /** @var int $windowSize */
+    $windowSize = (int) ($overrides['window_size'] ?? 50);
+
+    /** @var int $maxRepeats */
+    $maxRepeats = (int) ($overrides['max_repeats'] ?? 3);
+
+    /** @var float $maxStepGrowthRatio */
+    $maxStepGrowthRatio = (float) ($overrides['max_step_growth_ratio'] ?? 2.5);
+
+    /** @var int $frequencyThreshold */
+    $frequencyThreshold = (int) ($overrides['frequency_threshold'] ?? 3);
+
+    /** @var SimilarityStrategy|null $similarity */
+    $similarity = $overrides['similarity'] ?? null;
+
+    /** @var float $similarityThreshold */
+    $similarityThreshold = (float) ($overrides['similarity_threshold'] ?? 0.85);
+
+    /** @var list<string> $exemptTools */
+    $exemptTools = $overrides['exempt_tools'] ?? [];
+
     return new LoopDetector(
-        windowSize: $overrides['window_size'] ?? 50,
-        maxRepeats: $overrides['max_repeats'] ?? 3,
-        maxStepGrowthRatio: $overrides['max_step_growth_ratio'] ?? 2.5,
-        frequencyThreshold: $overrides['frequency_threshold'] ?? 3,
-        similarity: $overrides['similarity'] ?? null,
-        similarityThreshold: $overrides['similarity_threshold'] ?? 0.85,
-        exemptTools: array_fill_keys($overrides['exempt_tools'] ?? [], true),
+        windowSize: $windowSize,
+        maxRepeats: $maxRepeats,
+        maxStepGrowthRatio: $maxStepGrowthRatio,
+        frequencyThreshold: $frequencyThreshold,
+        similarity: $similarity,
+        similarityThreshold: $similarityThreshold,
+        exemptTools: array_fill_keys($exemptTools, true),
     );
 }
 

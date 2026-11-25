@@ -11,6 +11,7 @@ use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Illuminate\Contracts\Events\Dispatcher;
 use Laravel\Mcp\Server\Tool;
 
 /**
@@ -84,11 +85,14 @@ function mcpTestRuntime(bool $enforce = false, ?Ledger $ledger = null): GuardRun
         ],
     ]);
 
+    /** @var Dispatcher $dispatcher */
+    $dispatcher = app('events');
+
     return new GuardRuntime(
         ledger: $ledger ?? mcpTestLedger(),
         estimator: new CostEstimator($catalog, defaultOutputTokens: 100),
         similarity: null,
-        dispatcher: app('events'),
+        dispatcher: $dispatcher,
         enforce: $enforce,
         killSwitchEnabled: true,
         loopCooldownSeconds: 60,
@@ -125,9 +129,12 @@ class GuardedTestTool extends Tool
 
     public function run(Request $request): Response
     {
-        $this->calls[] = $request->all();
+        /** @var array<string, mixed> $all */
+        $all = $request->all();
 
-        return Response::text('tool result for: '.json_encode($request->all()));
+        $this->calls[] = $all;
+
+        return Response::text('tool result for: '.json_encode($all));
     }
 }
 

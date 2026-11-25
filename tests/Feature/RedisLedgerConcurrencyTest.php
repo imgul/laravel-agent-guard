@@ -33,7 +33,7 @@ function redisAvailable(): bool
 
 it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend', function (): void {
     if (! redisAvailable()) {
-        test()->markTestSkipped('Redis server not reachable; concurrency gate runs in CI.');
+        skip('Redis server not reachable; concurrency gate runs in CI.');
     }
 
     /** @var \Redis $client */
@@ -94,7 +94,10 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
         $stderr = stream_get_contents($stderrPipes[$i]);
         $results[] = (int) trim((string) $output);
         $stderrs[] = trim((string) $stderr);
-        proc_close($proc);
+
+        if (is_resource($proc)) {
+            proc_close($proc);
+        }
     }
 
     // Exactly 5 reservations must succeed (return 1), 5 denied (return 0).
@@ -124,7 +127,7 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
 
 it('signals soft-cap breach via the same atomic call', function (): void {
     if (! redisAvailable()) {
-        test()->markTestSkipped('Redis server not reachable; runs in CI.');
+        skip('Redis server not reachable; runs in CI.');
     }
 
     /** @var \Redis $client */
@@ -154,7 +157,7 @@ it('signals soft-cap breach via the same atomic call', function (): void {
 
 it('reconciles a reservation back to actual spend', function (): void {
     if (! redisAvailable()) {
-        test()->markTestSkipped('Redis server not reachable; runs in CI.');
+        skip('Redis server not reachable; runs in CI.');
     }
 
     /** @var \Redis $client */

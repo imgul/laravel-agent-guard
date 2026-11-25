@@ -32,7 +32,7 @@ final class AgentGuardStatusCommand extends Command
         $this->line('  driver : <fg=yellow>'.AgentGuard::driver().'</>');
         $this->line('');
 
-        if ($tenant !== null && $tenant !== '') {
+        if (is_string($tenant) && $tenant !== '') {
             $this->showTenant($tenant, $runtime);
 
             return self::SUCCESS;
