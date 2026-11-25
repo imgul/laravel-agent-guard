@@ -125,19 +125,19 @@ final class PricingCatalog
 
         $cost = 0.0;
 
-        $cost += ($usage->inputTokens / 1000.0) * ($price['input'] ?? 0.0);
-        $cost += ($usage->outputTokens / 1000.0) * ($price['output'] ?? 0.0);
+        $cost += ($usage->inputTokens / 1_000_000.0) * ($price['input'] ?? 0.0);
+        $cost += ($usage->outputTokens / 1_000_000.0) * ($price['output'] ?? 0.0);
 
         if ($usage->cacheReadInputTokens !== null) {
-            $cost += ($usage->cacheReadInputTokens / 1000.0) * ($price['cache_read'] ?? 0.0);
+            $cost += ($usage->cacheReadInputTokens / 1_000_000.0) * ($price['cache_read'] ?? 0.0);
         }
 
         if ($usage->cacheWriteInputTokens !== null) {
-            $cost += ($usage->cacheWriteInputTokens / 1000.0) * ($price['cache_write'] ?? 0.0);
+            $cost += ($usage->cacheWriteInputTokens / 1_000_000.0) * ($price['cache_write'] ?? 0.0);
         }
 
         if ($usage->reasoningTokens !== null) {
-            $cost += ($usage->reasoningTokens / 1000.0) * ($price['reasoning'] ?? 0.0);
+            $cost += ($usage->reasoningTokens / 1_000_000.0) * ($price['reasoning'] ?? 0.0);
         }
 
         return round($cost, 6);

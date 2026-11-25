@@ -51,6 +51,12 @@ return [
         // Same normalized fingerprint repeated this many times trips the breaker.
         'max_repeats' => 3,
 
+        // Raw call-rate spike: how many times a single tool must be called
+        // (with any arguments) inside the window to trip the frequency
+        // detector. Separate from max_repeats so normal agents that
+        // legitimately call a tool several times don't get flagged.
+        'frequency_threshold' => 8,
+
         // Step-over-step input-token growth ratio with no progress = reasoning loop.
         'max_step_growth_ratio' => 2.5,
 

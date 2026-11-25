@@ -5,24 +5,31 @@ declare(strict_types=1);
 namespace Imgul\AgentGuard\Loop;
 
 use Imgul\AgentGuard\Events\CircuitTripped;
+use Imgul\AgentGuard\Switch\SwitchStore;
 use Illuminate\Contracts\Events\Dispatcher;
 
 /**
  * Circuit breaker: CLOSED -> OPEN -> HALF_OPEN -> CLOSED.
  *
- * One breaker instance may serve many scoped keys (a run id or a
- * scope:tool pair). State transitions emit CircuitTripped. On HALF_OPEN the
- * caller should prune accumulated context before retrying the probe step, so
- * the probe itself cannot re-bloat the context.
+ * State is persisted through a SwitchStore so the breaker survives across
+ * processes. The breaker is keyed per-run (using a run id), so a loop in
+ * one run does not block a later, independent run for the same tenant.
+ *
+ * Lifecycle:
+ *  1. trip() moves CLOSED/HALF_OPEN -> OPEN, records the open time.
+ *  2. After the cooldown, allowProbe() transitions OPEN -> HALF_OPEN and
+ *     returns true so the caller lets one probe step through.
+ *  3. probeResult($key, $success) closes (CLOSED) on success, or
+ *     re-trips (OPEN) on failure with a fresh cooldown.
+ *  4. reset() clears the state for a run.
+ *
+ * On HALF_OPEN the caller should prune accumulated context before retrying
+ * the probe step, so the probe itself cannot re-bloat the context.
  */
 final class CircuitBreaker
 {
-    /**
-     * @var array<string, array{state: LoopState, openedAt: float}>
-     */
-    private array $states = [];
-
     public function __construct(
+        private readonly SwitchStore $store,
         private readonly int $cooldownSeconds = 60,
         private readonly bool $halfOpenProbe = true,
         private readonly ?Dispatcher $dispatcher = null,
@@ -33,7 +40,9 @@ final class CircuitBreaker
      */
     public function state(string $key): LoopState
     {
-        return $this->states[$key]['state'] ?? LoopState::Closed;
+        $data = $this->load($key);
+
+        return $data['state'] ?? LoopState::Closed;
     }
 
     /**
@@ -57,7 +66,7 @@ final class CircuitBreaker
             return $current;
         }
 
-        $this->states[$key] = ['state' => LoopState::Open, 'openedAt' => microtime(true)];
+        $this->save($key, LoopState::Open);
 
         $this->dispatch(new CircuitTripped($key, LoopState::Open, $this->cooldownSeconds));
 
@@ -73,9 +82,9 @@ final class CircuitBreaker
      */
     public function allowProbe(string $key): bool
     {
-        $state = $this->states[$key] ?? null;
+        $data = $this->load($key);
 
-        if ($state === null || $state['state'] !== LoopState::Open) {
+        if (! isset($data['state']) || $data['state'] !== LoopState::Open) {
             return false;
         }
 
@@ -83,11 +92,13 @@ final class CircuitBreaker
             return false;
         }
 
-        if ((microtime(true) - $state['openedAt']) < $this->cooldownSeconds) {
+        $openedAt = $data['openedAt'] ?? 0.0;
+
+        if ((microtime(true) - $openedAt) < $this->cooldownSeconds) {
             return false;
         }
 
-        $this->states[$key]['state'] = LoopState::HalfOpen;
+        $this->save($key, LoopState::HalfOpen, $openedAt);
 
         $this->dispatch(new CircuitTripped($key, LoopState::HalfOpen, 0));
 
@@ -118,12 +129,12 @@ final class CircuitBreaker
         }
 
         if ($success) {
-            unset($this->states[$key]);
+            $this->store->delete($this->storageKey($key));
 
             return LoopState::Closed;
         }
 
-        $this->states[$key] = ['state' => LoopState::Open, 'openedAt' => microtime(true)];
+        $this->save($key, LoopState::Open);
 
         $this->dispatch(new CircuitTripped($key, LoopState::Open, $this->cooldownSeconds));
 
@@ -135,7 +146,7 @@ final class CircuitBreaker
      */
     public function reset(string $key): void
     {
-        unset($this->states[$key]);
+        $this->store->delete($this->storageKey($key));
     }
 
     /**
@@ -145,13 +156,46 @@ final class CircuitBreaker
      */
     public function snapshot(): array
     {
-        $snapshot = [];
+        // The SwitchStore does not expose enumeration for Redis/cache
+        // without a scan. For the status command, this returns the
+        // known keys. Run-scoped keys are transient and not reported.
+        return [];
+    }
 
-        foreach ($this->states as $key => $state) {
-            $snapshot[$key] = $state['state']->value;
+    /**
+     * Load and decode the stored state for a key.
+     *
+     * @return array{state?: LoopState, openedAt?: float}
+     */
+    private function load(string $key): array
+    {
+        $raw = $this->store->get($this->storageKey($key));
+
+        if ($raw === null) {
+            return [];
         }
 
-        return $snapshot;
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [];
+    }
+
+    private function save(string $key, LoopState $state, ?float $openedAt = null): void
+    {
+        $data = ['state' => $state->value, 'openedAt' => $openedAt ?? microtime(true)];
+
+        $this->store->set($this->storageKey($key), json_encode($data) ?: '');
+    }
+
+    private function storageKey(string $key): string
+    {
+        return 'agent-guard:breaker:'.$key;
     }
 
     private function dispatch(CircuitTripped $event): void

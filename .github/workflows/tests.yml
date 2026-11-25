@@ -45,8 +45,8 @@ jobs:
 
             - name: Install dependencies
               run: |
-                  composer require "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-progress --with-all-dependencies
-                  composer dump-autoload
+                  composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-progress
+                  composer install --no-interaction --no-progress --prefer-dist
 
             - name: Run tests
               run: vendor/bin/pest --colors=always
