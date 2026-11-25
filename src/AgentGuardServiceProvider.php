@@ -10,15 +10,18 @@ use Illuminate\Support\ServiceProvider;
 use Imgul\AgentGuard\Budget\Drivers\DatabaseLedger;
 use Imgul\AgentGuard\Budget\Drivers\RedisLedger;
 use Imgul\AgentGuard\Budget\Ledger;
+use Imgul\AgentGuard\Console\AgentGuardBudgetsCommand;
+use Imgul\AgentGuard\Console\AgentGuardKillCommand;
+use Imgul\AgentGuard\Console\AgentGuardStatusCommand;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
+use Imgul\AgentGuard\Support\CostEstimator;
+use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
+use Imgul\AgentGuard\Support\Similarity\SimHash;
+use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
+use Imgul\AgentGuard\Support\Similarity\TrigramJaccard;
 use Imgul\AgentGuard\Switch\DatabaseSwitchStore;
 use Imgul\AgentGuard\Switch\RedisSwitchStore;
 use Imgul\AgentGuard\Switch\SwitchStore;
-use Imgul\AgentGuard\Support\CostEstimator;
-use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
-use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
-use Imgul\AgentGuard\Support\Similarity\SimHash;
-use Imgul\AgentGuard\Support\Similarity\TrigramJaccard;
 
 final class AgentGuardServiceProvider extends ServiceProvider
 {
@@ -49,7 +52,7 @@ final class AgentGuardServiceProvider extends ServiceProvider
             $config = $container->make('config');
 
             if ($config->get('agent-guard.driver') === 'database') {
-                return new DatabaseLedger();
+                return new DatabaseLedger;
             }
 
             /** @var \Redis $client */
@@ -86,7 +89,7 @@ final class AgentGuardServiceProvider extends ServiceProvider
             $config = $container->make('config');
 
             if ($config->get('agent-guard.driver') === 'database') {
-                return new DatabaseSwitchStore();
+                return new DatabaseSwitchStore;
             }
 
             /** @var \Redis $client */
@@ -122,9 +125,9 @@ final class AgentGuardServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \Imgul\AgentGuard\Console\AgentGuardStatusCommand::class,
-                \Imgul\AgentGuard\Console\AgentGuardKillCommand::class,
-                \Imgul\AgentGuard\Console\AgentGuardBudgetsCommand::class,
+                AgentGuardStatusCommand::class,
+                AgentGuardKillCommand::class,
+                AgentGuardBudgetsCommand::class,
             ]);
 
             $this->publishes(
@@ -146,11 +149,11 @@ final class AgentGuardServiceProvider extends ServiceProvider
         }
 
         if ($strategy === 'simhash') {
-            return new SimHash();
+            return new SimHash;
         }
 
         if ($strategy === 'trigram') {
-            return new TrigramJaccard();
+            return new TrigramJaccard;
         }
 
         $resolved = $this->app->make($strategy);

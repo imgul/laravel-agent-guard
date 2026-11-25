@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Budget;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Imgul\AgentGuard\Events\BudgetHardCapReached;
 use Imgul\AgentGuard\Events\BudgetSoftCapReached;
 use Imgul\AgentGuard\Exceptions\BudgetExceededException;
 use Imgul\AgentGuard\Support\TextUsage;
-use Illuminate\Contracts\Events\Dispatcher;
 
 /**
  * BudgetGuard: multi-tenant token/USD budget enforcement.
@@ -30,6 +30,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 final class BudgetGuard
 {
     public const string UNIT_USD = 'usd';
+
     public const string UNIT_TOKENS = 'tokens';
 
     /**

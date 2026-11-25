@@ -74,8 +74,6 @@ final class RecordingDispatcher extends EventDispatcher
 
     /**
      * The first recorded event matching the given class.
-     *
-     * @return object|null
      */
     public function firstRecorded(string $eventClass): ?object
     {
@@ -90,8 +88,6 @@ final class RecordingDispatcher extends EventDispatcher
 
     /**
      * The first recorded event matching the class and the predicate.
-     *
-     * @return object|null
      */
     public function recordedMatching(string $eventClass, callable $predicate): ?object
     {

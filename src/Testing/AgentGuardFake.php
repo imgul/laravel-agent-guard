@@ -51,7 +51,7 @@ final class AgentGuardFake extends GuardRuntime
         $this->recorder = new RecordingDispatcher(app('events'));
 
         parent::__construct(
-            ledger: new InMemoryLedger(),
+            ledger: new InMemoryLedger,
             estimator: new CostEstimator($catalog, defaultOutputTokens: 100),
             similarity: null,
             dispatcher: $this->recorder,
@@ -97,6 +97,7 @@ final class AgentGuardFake extends GuardRuntime
      * scope.
      *
      * @param  string  $scope  BudgetScope value ('run' | 'agent' | 'tenant' | 'tool').
+     *
      * @throws RuntimeException when no matching event was recorded.
      */
     public function assertBudgetSoftCapReached(string $scope): void
@@ -112,6 +113,7 @@ final class AgentGuardFake extends GuardRuntime
      * scope.
      *
      * @param  string  $scope  BudgetScope value.
+     *
      * @throws RuntimeException when no matching event was recorded.
      */
     public function assertBudgetHardCapReached(string $scope): void

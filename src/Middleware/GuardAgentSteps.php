@@ -14,8 +14,8 @@ use Imgul\AgentGuard\Loop\CircuitBreaker;
 use Imgul\AgentGuard\Loop\KillSwitch;
 use Imgul\AgentGuard\Loop\LoopDetector;
 use Imgul\AgentGuard\Loop\ToolCall;
-use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 use Imgul\AgentGuard\Support\Similarity\SimHash;
+use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 use Imgul\AgentGuard\Support\Similarity\TrigramJaccard;
 use Imgul\AgentGuard\Support\StepEstimate;
 use Imgul\AgentGuard\Support\TextUsage;
@@ -248,7 +248,6 @@ final class GuardAgentSteps
      * Middleware entry point (laravel/ai HasMiddleware pipe).
      *
      * @param  Closure(PendingStep): StepResult  $next
-     * @return StepResult
      */
     public function handle(PendingStep $step, Closure $next): StepResult
     {
@@ -340,11 +339,11 @@ final class GuardAgentSteps
         }
 
         if ($strategy === 'simhash') {
-            return new SimHash();
+            return new SimHash;
         }
 
         if ($strategy === 'trigram') {
-            return new TrigramJaccard();
+            return new TrigramJaccard;
         }
 
         // A fully-qualified SimilarityStrategy class name.
@@ -629,7 +628,7 @@ final class GuardAgentSteps
      * Estimated pre-step cost for a PendingStep: input tokens from message
      * content, a default output allowance, and USD from the pricing catalog.
      *
-     * @return StepEstimate|null  null when nothing can be estimated
+     * @return StepEstimate|null null when nothing can be estimated
      */
     private function estimateForStep(PendingStep $step): ?StepEstimate
     {

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Support\Facades\Event;
 use Imgul\AgentGuard\Budget\BudgetReservation;
 use Imgul\AgentGuard\Budget\BudgetResult;
 use Imgul\AgentGuard\Budget\Ledger;
@@ -11,8 +13,6 @@ use Imgul\AgentGuard\Middleware\GuardAgentSteps;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Support\Facades\Event;
 use Laravel\Ai\Gateway\StepResponse;
 use Laravel\Ai\Gateway\StepResult;
 use Laravel\Ai\Messages\Message;

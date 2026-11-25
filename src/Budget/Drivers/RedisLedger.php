@@ -25,9 +25,6 @@ final class RedisLedger implements Ledger
 {
     private const SCRIPT_PATH = __DIR__.'/../Lua/reserve.lua';
 
-    /**
-     * @var string|null
-     */
     private static ?string $script = null;
 
     public function __construct(

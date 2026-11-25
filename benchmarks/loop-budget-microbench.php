@@ -22,8 +22,8 @@ require __DIR__.'/../vendor/autoload.php';
 
 use Imgul\AgentGuard\Budget\BudgetGuard;
 use Imgul\AgentGuard\Budget\BudgetScope;
-use Imgul\AgentGuard\Budget\Ledger;
 use Imgul\AgentGuard\Budget\Drivers\RedisLedger;
+use Imgul\AgentGuard\Budget\Ledger;
 use Imgul\AgentGuard\Loop\LoopDetector;
 use Imgul\AgentGuard\Loop\ToolCall;
 use Imgul\AgentGuard\Support\Similarity\SimHash;
@@ -87,7 +87,7 @@ $detector = new LoopDetector(
     maxRepeats: 3,
     maxStepGrowthRatio: 2.5,
     frequencyThreshold: 3,
-    similarity: new SimHash(),
+    similarity: new SimHash,
     similarityThreshold: 0.85,
     exemptTools: [],
     dispatcher: null, // no events — measuring the hot path only.
@@ -139,7 +139,7 @@ function resolveLedger(string $driver): Ledger
             $redis->connect('127.0.0.1', 6379);
 
             return new RedisLedger($redis);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             fwrite(STDERR, "Redis unavailable ({$e->getMessage()}); falling back to in-memory.\n");
         }
     }

@@ -20,7 +20,7 @@ namespace Imgul\AgentGuard\Downshift;
 final class DownshiftEngine
 {
     /**
-     * @var  list<DownshiftTier>  sorted by threshold ascending
+     * @var list<DownshiftTier> sorted by threshold ascending
      */
     private readonly array $tiers;
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Budget\Drivers;
 
+use Illuminate\Support\Facades\DB;
 use Imgul\AgentGuard\Budget\BudgetReservation;
 use Imgul\AgentGuard\Budget\BudgetResult;
 use Imgul\AgentGuard\Budget\Ledger;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Database-backed budget ledger — the no-Redis fallback (PRD FR-2.8).
@@ -101,9 +101,6 @@ final class DatabaseLedger implements Ledger
 
     /**
      * Build the raw SQL adjustment expression for a numeric excess.
-     *
-     * @param  float  $excess
-     * @return string
      */
     private function rawAdjustment(float $excess): string
     {

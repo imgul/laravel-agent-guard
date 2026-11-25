@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Middleware;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Imgul\AgentGuard\Budget\BudgetGuard;
 use Imgul\AgentGuard\Budget\Ledger;
 use Imgul\AgentGuard\Downshift\DownshiftEngine;
@@ -11,10 +12,9 @@ use Imgul\AgentGuard\Downshift\DownshiftTier;
 use Imgul\AgentGuard\Loop\CircuitBreaker;
 use Imgul\AgentGuard\Loop\KillSwitch;
 use Imgul\AgentGuard\Loop\LoopDetector;
-use Imgul\AgentGuard\Switch\SwitchStore;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
-use Illuminate\Contracts\Events\Dispatcher;
+use Imgul\AgentGuard\Switch\SwitchStore;
 
 /**
  * Bundle of the runtime engines a GuardAgentSteps middleware needs.
@@ -80,7 +80,6 @@ class GuardRuntime
      * tool call is an independent JSON-RPC request that must still share
      * one sliding window per tool+principal.
      *
-     * @param  string  $scope
      * @param  array<string, true>  $exemptTools
      * @param  int|null  $maxRepeats  Override the runtime default for this scope.
      */

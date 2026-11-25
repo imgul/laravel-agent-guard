@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use Imgul\AgentGuard\Budget\BudgetScope;
 use Imgul\AgentGuard\Facades\AgentGuard;
-use Illuminate\Support\Facades\Artisan;
 
 beforeEach(function (): void {
     // Swap in the in-memory runtime so status/budgets read real-shaped

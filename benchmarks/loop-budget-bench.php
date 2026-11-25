@@ -69,7 +69,7 @@ function simulate(
     CostEstimator $estimator,
     int $totalSteps,
 ): array {
-    $breaker = $guarded ? new CircuitBreaker() : null;
+    $breaker = $guarded ? new CircuitBreaker : null;
     $detector = $guarded ? new LoopDetector(
         windowSize: 50,
         maxRepeats: MAX_REPEATS,
@@ -190,13 +190,13 @@ echo str_repeat('-', 72), "\n";
 printf("Tokens saved          %12d\n", $tokensSaved);
 printf("USD saved             %12.2f\n", $usdSaved);
 echo str_repeat('-', 72), "\n";
-echo "Outcome without guard: ", $unguarded['outcome'], "\n";
-echo "Outcome with guard:    ", $guarded['outcome'], "\n";
+echo 'Outcome without guard: ', $unguarded['outcome'], "\n";
+echo 'Outcome with guard:    ', $guarded['outcome'], "\n";
 if ($guarded['downshifted']) {
     printf("Downshift fired:      %s -> %s (soft-cap, 80%% threshold)\n", FRONTIER_MODEL, DOWNSHIFT_MODEL);
 }
 if ($guarded['halted']) {
-    echo "Breaker tripped at step ", MAX_REPEATS, " — steps ", (MAX_REPEATS + 1), '-', TOTAL_STEPS, " halted before leaving the server.\n";
+    echo 'Breaker tripped at step ', MAX_REPEATS, ' — steps ', (MAX_REPEATS + 1), '-', TOTAL_STEPS, " halted before leaving the server.\n";
 }
 echo str_repeat('=', 72), "\n";
 echo "This is the launch evidence asset (PRD FR-5.6): the guard turns an\n";

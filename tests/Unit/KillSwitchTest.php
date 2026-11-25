@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Imgul\AgentGuard\Loop\KillSwitch;
 
 it('starts with all switches closed', function (): void {
-    $switch = new KillSwitch();
+    $switch = new KillSwitch;
 
     expect($switch->isOpen('run', 'run-1'))->toBeFalse();
     expect($switch->isOpen('tenant', 'tenant-1'))->toBeFalse();
@@ -13,7 +13,7 @@ it('starts with all switches closed', function (): void {
 });
 
 it('opens and releases switches per scope and key', function (): void {
-    $switch = new KillSwitch();
+    $switch = new KillSwitch;
 
     expect($switch->kill('tenant', 'tenant-1'))->toBeTrue();
     expect($switch->isOpen('tenant', 'tenant-1'))->toBeTrue();
@@ -25,7 +25,7 @@ it('opens and releases switches per scope and key', function (): void {
 });
 
 it('scopes switches independently', function (): void {
-    $switch = new KillSwitch();
+    $switch = new KillSwitch;
     $switch->kill('run', 'run-1');
 
     expect($switch->isOpen('run', 'run-1'))->toBeTrue();
@@ -34,7 +34,7 @@ it('scopes switches independently', function (): void {
 });
 
 it('does not re-dispatch when a switch is toggled to its current state', function (): void {
-    $switch = new KillSwitch();
+    $switch = new KillSwitch;
 
     expect($switch->kill('run', 'run-1'))->toBeTrue();
     expect($switch->kill('run', 'run-1'))->toBeFalse();
@@ -43,7 +43,7 @@ it('does not re-dispatch when a switch is toggled to its current state', functio
 });
 
 it('exposes open scopes for status reporting', function (): void {
-    $switch = new KillSwitch();
+    $switch = new KillSwitch;
     $switch->kill('run', 'run-1');
     $switch->kill('run', 'run-2');
     $switch->kill('tenant', 'tenant-1');

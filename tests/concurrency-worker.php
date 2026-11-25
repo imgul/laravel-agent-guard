@@ -17,7 +17,6 @@ declare(strict_types=1);
  * stdout: the Lua eval code (0 denied / 1 allowed / 101 soft-exceeded).
  * stderr: a single diagnostic line (db / prefix / spent / code) for triage.
  */
-
 [$host, $port, $db, $prefix, $key, $luaPath] = array_slice($argv, 1);
 
 try {
@@ -25,7 +24,7 @@ try {
         throw new RuntimeException('redis extension not loaded');
     }
 
-    $r = new Redis();
+    $r = new Redis;
     $r->connect($host, (int) $port);
     $r->select((int) $db);
 

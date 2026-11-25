@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Loop;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Imgul\AgentGuard\Events\LoopDetected;
 use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
-use Illuminate\Contracts\Events\Dispatcher;
 
 /**
  * LoopGuard core: sliding-window orchestration of the loop detectors.
@@ -54,10 +54,10 @@ final class LoopDetector
         private readonly ?Dispatcher $dispatcher = null,
     ) {
         $this->detectors = [
-            new Detectors\ExactRepeatDetector(),
-            new Detectors\NormalizedRepeatDetector(),
-            new Detectors\FrequencyDetector(),
-            new Detectors\ContextGrowthDetector(),
+            new Detectors\ExactRepeatDetector,
+            new Detectors\NormalizedRepeatDetector,
+            new Detectors\FrequencyDetector,
+            new Detectors\ContextGrowthDetector,
         ];
     }
 
@@ -66,7 +66,7 @@ final class LoopDetector
      *
      * @param  list<string>  $outputFingerprints  Fingerprints of tool outputs
      *                                            produced by the completed step.
-     * @return list<LoopFinding>  Every finding raised by this step.
+     * @return list<LoopFinding> Every finding raised by this step.
      */
     public function check(ToolCall $call, int $inputTokens, array $outputFingerprints = []): array
     {
@@ -113,7 +113,7 @@ final class LoopDetector
         // similarity strategies) only when the frequency detector has already
         // signalled an elevated call-rate, bounding per-step latency/cost.
         if ($frequencyElevated && $this->similarity !== null) {
-            $finding = (new Detectors\SemanticDetector())->detect($call, $context);
+            $finding = (new Detectors\SemanticDetector)->detect($call, $context);
 
             if ($finding !== null) {
                 $findings[] = $finding;

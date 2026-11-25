@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Imgul\AgentGuard\Loop\LoopDetector;
 use Imgul\AgentGuard\Loop\ToolCall;
-use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 use Imgul\AgentGuard\Support\Similarity\SimHash;
+use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 
 /**
  * @param  array<string, mixed>  $overrides
@@ -126,7 +126,7 @@ it('only escalates to semantic similarity when frequency is elevated', function 
     $detector = makeDetector([
         'max_repeats' => 99,
         'frequency_threshold' => 3,
-        'similarity' => new SimHash(),
+        'similarity' => new SimHash,
     ]);
 
     // Identical normalized text gives SimHash similarity 1.0 (>= the 0.85
@@ -148,7 +148,7 @@ it('does not run semantic detection when frequency is not elevated', function ()
     $detector = makeDetector([
         'max_repeats' => 99,
         'frequency_threshold' => 3,
-        'similarity' => new SimHash(),
+        'similarity' => new SimHash,
     ]);
 
     $findings = $detector->check(new ToolCall('search', ['q' => 'find user by email']), 100);

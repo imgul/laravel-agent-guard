@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Console;
 
-use Imgul\AgentGuard\Facades\AgentGuard;
 use Illuminate\Console\Command;
+use Imgul\AgentGuard\Facades\AgentGuard;
 
 /**
  * agent-guard:kill — open the kill switch to halt guarded execution.

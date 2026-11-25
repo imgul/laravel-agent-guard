@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Loop;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Imgul\AgentGuard\Events\CircuitTripped;
 use Imgul\AgentGuard\Switch\InMemorySwitchStore;
 use Imgul\AgentGuard\Switch\SwitchStore;
-use Illuminate\Contracts\Events\Dispatcher;
 
 /**
  * Circuit breaker: CLOSED -> OPEN -> HALF_OPEN -> CLOSED.
@@ -161,7 +161,7 @@ final class CircuitBreaker
     /**
      * Snapshot of all scoped breaker states.
      *
-     * @return array<string, string>  key => state value
+     * @return array<string, string> key => state value
      */
     public function snapshot(): array
     {

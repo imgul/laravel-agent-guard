@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Loop;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Imgul\AgentGuard\Events\KillSwitchActivated;
 use Imgul\AgentGuard\Switch\InMemorySwitchStore;
 use Imgul\AgentGuard\Switch\SwitchStore;
-use Illuminate\Contracts\Events\Dispatcher;
 
 /**
  * Instant kill switch for guarded execution.
@@ -29,7 +29,7 @@ final class KillSwitch
     private readonly SwitchStore $store;
 
     /**
-     * @param SwitchStore $store  persistent storage (Redis, cache, or in-memory)
+     * @param  SwitchStore  $store  persistent storage (Redis, cache, or in-memory)
      */
     public function __construct(
         ?SwitchStore $store = null,

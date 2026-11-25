@@ -115,9 +115,6 @@ final class Fingerprint
         return $normalized;
     }
 
-    /**
-     * @param  string|int  $key
-     */
     private static function isPaginationKey(string|int $key): bool
     {
         return in_array(strtolower((string) $key), self::PAGINATION_KEYS, true);

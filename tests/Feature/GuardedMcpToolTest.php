@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Imgul\AgentGuard\Budget\BudgetReservation;
 use Imgul\AgentGuard\Budget\BudgetResult;
 use Imgul\AgentGuard\Budget\Ledger;
-use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Mcp\GuardedMcpTool;
+use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Imgul\AgentGuard\Support\CostEstimator;
 use Imgul\AgentGuard\Support\Pricing\PricingCatalog;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
-use Illuminate\Contracts\Events\Dispatcher;
 use Laravel\Mcp\Server\Tool;
 
 /**
@@ -160,7 +160,7 @@ it('runs the tool normally when no control is triggered', function (): void {
     // Bind the runtime so the trait's app(GuardRuntime::class) resolves it.
     app()->instance(GuardRuntime::class, $runtime);
 
-    $tool = new GuardedTestTool();
+    $tool = new GuardedTestTool;
     /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
@@ -176,7 +176,7 @@ it('hard-halts with a Response::error when the kill switch is open', function ()
     // Open the kill switch for this tool's scope (tool:test_guarded_tool:anonymous).
     $runtime->killSwitch->kill('tool', 'tool:test_guarded_tool:anonymous');
 
-    $tool = new GuardedTestTool();
+    $tool = new GuardedTestTool;
     /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
@@ -262,7 +262,7 @@ it('shares the kill switch with agent steps: one policy governs both surfaces', 
     // Open the kill switch for the tool scope.
     $runtime->killSwitch->kill('tool', 'tool:test_guarded_tool:anonymous');
 
-    $tool = new GuardedTestTool();
+    $tool = new GuardedTestTool;
     /** @var Response $mcpResponse */
     $mcpResponse = $tool->handle(mcpTestRequest(['q' => 'hello']));
 
@@ -310,7 +310,7 @@ it('uses the authenticated user as the default principal', function (): void {
     // No principal resolver configured — the trait falls back to the
     // authenticated user. In the testbench context (no auth), it resolves
     // to 'anonymous', and the scope key is deterministic.
-    $tool = new GuardedTestTool();
+    $tool = new GuardedTestTool;
     /** @var Response $response */
     $response = $tool->handle(mcpTestRequest(['q' => 'hello']));
 

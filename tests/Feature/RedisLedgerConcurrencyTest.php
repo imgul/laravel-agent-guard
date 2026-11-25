@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Redis;
 use Imgul\AgentGuard\Budget\BudgetReservation;
 use Imgul\AgentGuard\Budget\BudgetScope;
 use Imgul\AgentGuard\Budget\Drivers\RedisLedger;
 use Imgul\AgentGuard\Budget\Ledger;
-use Illuminate\Support\Facades\Redis;
 
 /**
  * Hard gate (PLAN Phase 2): the atomic Redis Lua ledger must be race-safe.
@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\Redis;
  * Skipped when no Redis server is reachable (e.g. local runs without the
  * CI Redis service); the Lua script's atomicity is proven in CI.
  */
-
 function redisAvailable(): bool
 {
     try {

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Imgul\AgentGuard\Console;
 
+use Illuminate\Console\Command;
 use Imgul\AgentGuard\Facades\AgentGuard;
 use Imgul\AgentGuard\Middleware\GuardRuntime;
-use Illuminate\Console\Command;
 
 /**
  * agent-guard:status — operational health of the guard runtime.

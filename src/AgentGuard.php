@@ -171,7 +171,7 @@ final class AgentGuard
      * a no-op hook for future manual reconciliation; it returns the
      * runtime's current breaker state for the run as a diagnostic.
      *
-     * @return string  the breaker state for the run.
+     * @return string the breaker state for the run.
      */
     public function reconcile(string $runId): string
     {
@@ -186,7 +186,7 @@ final class AgentGuard
      * Swap in the AgentGuardFake as the GuardRuntime binding, so guarded
      * agent / MCP code resolves the fake instead of the real runtime.
      *
-     * @return AgentGuardFake  the active fake (for direct assertions).
+     * @return AgentGuardFake the active fake (for direct assertions).
      */
     public function fake(): AgentGuardFake
     {
