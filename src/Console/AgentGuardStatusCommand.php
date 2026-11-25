@@ -50,7 +50,7 @@ final class AgentGuardStatusCommand extends Command
 
         $this->line('<fg=green>Tenant: '.$tenant.'</>');
         $this->line('  kill switch : '.($status['kill_switch'] ? '<fg=red;bg=yellow>OPEN</>' : '<fg=green>closed</>'));
-        $this->line('  breaker     : <fg=yellow>'.$status['breaker'].'</>  (key: run:'.$tenant.')');
+        $this->line('  breaker     : <fg=yellow>'.$status['breaker'].'</>  (keyed per-run)');
         $this->line('');
 
         $rows = [];

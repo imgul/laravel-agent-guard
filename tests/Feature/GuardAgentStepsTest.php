@@ -177,7 +177,7 @@ it('trips the circuit breaker on a 5-step loop of repeated tool calls', function
     // The breaker must trip mid-run: by step 3 the window holds 3 repeats.
     expect($stoppedAt)->not->toBeNull()
         ->and($stoppedAt)->toBeLessThanOrEqual(3)
-        ->and($runtime->breaker->isOpen('run'))->toBeTrue();
+        ->and($runtime->breaker->isOpen($middleware->runId()))->toBeTrue();
 });
 
 it('downshifts the step model mid-run when a soft cap is breached', function (): void {
@@ -270,7 +270,7 @@ it('stays inert in observe mode: no downshift, no breaker trip', function (): vo
     }
 
     expect($capturedModel)->toBe('gpt-5')
-        ->and($runtime->breaker->isOpen('run'))->toBeFalse()
+        ->and($runtime->breaker->isOpen($middleware->runId()))->toBeFalse()
         ->and(Event::dispatched(ModelDownshifted::class))->toBeEmpty();
 });
 
@@ -281,10 +281,234 @@ it('hard-halts when the kill switch is open for the run', function (): void {
         ->forTenant(fn () => 'tenant-1')
         ->enforce();
 
-    // Open the kill switch for this run's scope.
-    $runtime->killSwitch->kill('run', 'run:tenant-1');
+    // The middleware generates a unique run id on the first step. Open
+    // the kill switch for that run scope after the first call so we know
+    // the run id.
+    $result = $middleware->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($result->stopped())->toBeFalse();
+
+    $runId = $middleware->runId();
+    expect($runId)->not->toBeNull();
+
+    $runtime->killSwitch->kill('run', $runId);
 
     $result = $middleware->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
 
     expect($result->stopped())->toBeTrue();
+});
+
+it('hard-halts when the kill switch is open for the tenant', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'acme')
+        ->enforce();
+
+    // Kill tenant 'acme' via the AgentGuard API (fresh runtime key).
+    $runtime->killSwitch->kill('tenant', 'acme');
+
+    $result = $middleware->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($result->stopped())->toBeTrue();
+});
+
+it('does not halt a different tenant when the kill switch is open for one tenant', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middlewareA = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'acme')
+        ->enforce();
+
+    $middlewareB = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'other')
+        ->enforce();
+
+    $runtime->killSwitch->kill('tenant', 'acme');
+
+    $resultA = $middlewareA->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+    $resultB = $middlewareB->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($resultA->stopped())->toBeTrue()
+        ->and($resultB->stopped())->toBeFalse();
+});
+
+it('hard-halts all tenants when the global kill switch is open', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middlewareA = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'acme')
+        ->enforce();
+
+    $middlewareB = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'other')
+        ->enforce();
+
+    $runtime->killSwitch->kill('global', \Imgul\AgentGuard\Loop\KillSwitch::GLOBAL_KEY);
+
+    $resultA = $middlewareA->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+    $resultB = $middlewareB->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($resultA->stopped())->toBeTrue()
+        ->and($resultB->stopped())->toBeTrue();
+});
+
+it('accepts integer tenant ids from forTenant()', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 42)
+        ->budget(['tenant' => [1.00, 5.00]])
+        ->enforce();
+
+    // Integer tenant should be cast to string "42" and not rejected.
+    $result = $middleware->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($result->stopped())->toBeFalse();
+});
+
+it('accepts Stringable tenant ids from forTenant()', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => new class implements \Stringable {
+            public function __toString(): string
+            {
+                return 'stringable-tenant';
+            }
+        })
+        ->budget(['tenant' => [1.00, 5.00]])
+        ->enforce();
+
+    $result = $middleware->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($result->stopped())->toBeFalse();
+});
+
+it('generates a unique run id per middleware instance', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware1 = GuardAgentSteps::make($runtime)->forTenant(fn () => 'acme')->enforce();
+    $middleware2 = GuardAgentSteps::make($runtime)->forTenant(fn () => 'acme')->enforce();
+
+    $middleware1->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+    $middleware2->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($middleware1->runId())->not->toBeNull()
+        ->and($middleware2->runId())->not->toBeNull()
+        ->and($middleware1->runId())->not->toBe($middleware2->runId());
+});
+
+it('resets the run id when reset() is called', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware = GuardAgentSteps::make($runtime)->forTenant(fn () => 'acme')->enforce();
+
+    $middleware->handle(guardTestStep(), fn (PendingStep $step): StepResult => guardTestResult());
+
+    expect($middleware->runId())->not->toBeNull();
+
+    $middleware->reset();
+
+    expect($middleware->runId())->toBeNull();
+});
+
+it('does not trip the breaker for one run when another run loops', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $runA = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'acme')
+        ->breakLoops(maxRepeats: 3)
+        ->enforce();
+
+    $runB = GuardAgentSteps::make($runtime)
+        ->forTenant(fn () => 'acme')
+        ->breakLoops(maxRepeats: 3)
+        ->enforce();
+
+    $repeatedToolCall = new SdkToolCall(id: 'tc-1', name: 'search', arguments: ['q' => 'same']);
+
+    $nextLoop = fn (PendingStep $step): StepResult => guardTestResult(toolCalls: [$repeatedToolCall]);
+    $nextClean = fn (PendingStep $step): StepResult => guardTestResult();
+
+    // Run A loops and trips its breaker.
+    for ($step = 0; $step < 5; $step++) {
+        $result = $runA->handle(guardTestStep(number: $step), $nextLoop);
+
+        if ($result->stopped()) {
+            break;
+        }
+    }
+
+    expect($runA->breaker->isOpen($runA->runId()))->toBeTrue();
+
+    // Run B should not be affected — its breaker is keyed by its own run id.
+    $resultB = $runB->handle(guardTestStep(), $nextClean);
+
+    expect($resultB->stopped())->toBeFalse()
+        ->and($runB->breaker->isOpen($runB->runId()))->toBeFalse();
+});
+
+it('does not trip the breaker for 5 distinct tool calls below the frequency threshold', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware = GuardAgentSteps::make($runtime)
+        ->breakLoops(maxRepeats: 3, frequency: 8)
+        ->enforce();
+
+    // 5 calls to 'search' with different queries — below the default
+    // frequency threshold of 8.
+    $calls = [
+        new SdkToolCall(id: 'tc-1', name: 'search', arguments: ['q' => 'alpha']),
+        new SdkToolCall(id: 'tc-2', name: 'search', arguments: ['q' => 'beta']),
+        new SdkToolCall(id: 'tc-3', name: 'search', arguments: ['q' => 'gamma']),
+        new SdkToolCall(id: 'tc-4', name: 'search', arguments: ['q' => 'delta']),
+        new SdkToolCall(id: 'tc-5', name: 'search', arguments: ['q' => 'epsilon']),
+    ];
+
+    $next = function (PendingStep $step) use (&$callIndex): StepResult {
+        $toolCall = $calls[$callIndex] ?? $calls[0];
+        $callIndex++;
+
+        return guardTestResult(toolCalls: [$toolCall]);
+    };
+
+    $callIndex = 0;
+
+    for ($step = 0; $step < 5; $step++) {
+        $result = $middleware->handle(guardTestStep(number: $step), $next);
+
+        expect($result->stopped())->toBeFalse();
+    }
+
+    expect($middleware->breaker->isOpen($middleware->runId()))->toBeFalse();
+});
+
+it('trips the breaker when frequency threshold is exceeded', function (): void {
+    $runtime = guardTestRuntime(enforce: true);
+
+    $middleware = GuardAgentSteps::make($runtime)
+        ->breakLoops(maxRepeats: 3, frequency: 8)
+        ->enforce();
+
+    // 8 calls to 'search' with different queries — meets the frequency
+    // threshold.
+    $next = fn (PendingStep $step): StepResult => guardTestResult(
+        toolCalls: [new SdkToolCall(id: 'tc-'.uniqid(), name: 'search', arguments: ['q' => uniqid()])],
+    );
+
+    $stoppedAt = null;
+
+    for ($step = 0; $step < 10; $step++) {
+        $result = $middleware->handle(guardTestStep(number: $step), $next);
+
+        if ($result->stopped()) {
+            $stoppedAt = $step;
+
+            break;
+        }
+    }
+
+    expect($stoppedAt)->not->toBeNull()
+        ->and($stoppedAt)->toBeLessThanOrEqual(8);
 });

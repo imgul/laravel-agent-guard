@@ -5,6 +5,60 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-25
+
+### Added
+
+- **`breakLoops(frequency:)` fluent API.** The frequency detector threshold
+  can now be set per-call via the middleware chain, overriding the config
+  default. Defaults to `agent-guard.loop.frequency_threshold` (8) when
+  omitted.
+- **`AgentGuard::killGlobal()`.** Open the global kill switch — halts every
+  guarded run everywhere in a single call.
+- **`AgentGuard::killRun(string $runId)`.** Open the kill switch for a
+  specific agent run, targeting a single run without affecting other runs.
+- **`agent-guard:kill --run=` option.** Target a single agent run by its
+  run id. Also added `--global` flag; without any option, the global
+  switch opens (previously opened a run-scope switch).
+- **Circuit breaker TTL.** Breaker state entries now carry a configurable
+  TTL (`agent-guard.loop.breaker.ttl_seconds`, default 600 = cooldown × 10),
+  so finished runs' breaker records self-expire instead of accumulating.
+
+### Fixed
+
+- **Kill switch not wired into `GuardAgentSteps::handle()`.** The middleware
+  previously checked `isOpenFor('run', 'run:{tenant}')` which never matched
+  the keys `AgentGuard::kill()` wrote. Now checks global (`isGloballyOpen()`),
+  tenant (`isOpenForTenant()`), and run scope (`isOpen('run', $runId)`).
+- **Circuit breaker keyed by tenant, not run.** The breaker was keyed by
+  `run:{tenant}`, so a loop in one run blocked all later runs for that
+  tenant. Now keyed by a unique run ID generated on the first step
+  (`PendingStep::isFirstStep()`), stored on the middleware, and cleared
+  in `reset()`. `AgentGuard::status()` and `reconcile()` updated to match.
+- **Breaker never probed, never expired.** `handle()` now implements the
+  HALF_OPEN probe lifecycle: when `isOpen(runId) && allowProbe(runId)`, one
+  probe step is let through with pruned context; `afterStep()` calls
+  `probeResult()` based on whether loop findings occurred (success → close,
+  failure → reopen). Saved with TTL.
+- **Frequency threshold hardcoded to 3.** `detectorInstance()` hardcoded
+  `frequencyThreshold: 3`. Now reads `config('agent-guard.loop.frequency_threshold')`
+  (default 8), overridable via `breakLoops(frequency:)`.
+- **`forTenant()` dropped integer and Stringable tenants.** Non-string
+  returns became null, skipping tenant budgets. Now casts `int` and
+  `Stringable` to string; other types log a warning (once per run) and
+  return null.
+- **Benchmark `SOFT_CAP_USD` too high.** Set to 15.00, the downshift never
+  fired. Rescaled to 0.05 so the downshift fires at step 2-3 with real
+  pricing. Benchmark output in `docs/benchmarks.md` replaced with real
+  run results.
+- **Anthropic pricing wrong.** `claude-opus-4-1` was $5/$25 (correct:
+  $15/$75); `claude-haiku-4-5` was $0.80/$4.00 (correct: $1/$5).
+  `gpt-5`, `gpt-5-mini`, and `gemini-3-pro` verified against provider
+  pages. Catalog version bumped to `2026-11-25.2`.
+- **Launch post claims.** Removed the unsourced "$200+ drained" line and
+  the "None operate at the step level" claim. Linked the $47k case study
+  source in `docs/launch-post.md`.
+
 ## [1.1.0] - 2026-11-25
 
 ### Fixed

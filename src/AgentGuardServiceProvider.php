@@ -110,6 +110,7 @@ final class AgentGuardServiceProvider extends ServiceProvider
                 loopWindowSize: self::intConfig($config, 'agent-guard.loop.window_size', 50),
                 loopMaxRepeats: self::intConfig($config, 'agent-guard.loop.max_repeats', 3),
                 loopMaxStepGrowthRatio: self::floatConfig($config, 'agent-guard.loop.max_step_growth_ratio', 2.5),
+                loopBreakerTtlSeconds: self::intConfig($config, 'agent-guard.loop.breaker.ttl_seconds', 600),
                 switchStore: $container->make(SwitchStore::class),
             );
         });

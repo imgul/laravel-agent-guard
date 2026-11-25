@@ -44,6 +44,7 @@ class GuardRuntime
         public readonly int $loopWindowSize = 50,
         public readonly int $loopMaxRepeats = 3,
         public readonly float $loopMaxStepGrowthRatio = 2.5,
+        public readonly int $loopBreakerTtlSeconds = 600,
         ?SwitchStore $switchStore = null,
     ) {
         $this->killSwitch = new KillSwitch(store: $switchStore, dispatcher: $dispatcher);
@@ -51,6 +52,7 @@ class GuardRuntime
             store: $switchStore,
             cooldownSeconds: $loopCooldownSeconds,
             dispatcher: $dispatcher,
+            ttlSeconds: $loopBreakerTtlSeconds,
         );
     }
 

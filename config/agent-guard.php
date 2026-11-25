@@ -65,6 +65,7 @@ return [
 
         'breaker' => [
             'cooldown_seconds' => 60,
+            'ttl_seconds' => 600,
             'half_open_probe' => true,
         ],
 

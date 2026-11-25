@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Imgul\AgentGuard\Middleware;
 
 use Closure;
+use Illuminate\Support\Facades\Log;
 use Imgul\AgentGuard\Budget\BudgetGuard;
 use Imgul\AgentGuard\Budget\BudgetScope;
 use Imgul\AgentGuard\Downshift\DownshiftEngine;
@@ -13,6 +14,7 @@ use Imgul\AgentGuard\Events\ModelDownshifted;
 use Imgul\AgentGuard\Loop\CircuitBreaker;
 use Imgul\AgentGuard\Loop\KillSwitch;
 use Imgul\AgentGuard\Loop\LoopDetector;
+use Imgul\AgentGuard\Loop\LoopState;
 use Imgul\AgentGuard\Loop\ToolCall;
 use Imgul\AgentGuard\Support\Similarity\SimilarityStrategy;
 use Imgul\AgentGuard\Support\Similarity\SimHash;
@@ -22,18 +24,23 @@ use Imgul\AgentGuard\Support\TextUsage;
 use Laravel\Ai\Gateway\StepResult;
 use Laravel\Ai\Messages\Message;
 use Laravel\Ai\PendingStep;
+use Stringable;
 
 /**
  * PendingStep-aware middleware: the step-level wedge for laravel/ai 1.x
  * (PRD FR-3.1, ARCHITECTURE §3, §6).
  *
  * Wraps every generation step of a guarded agent and applies, in order:
- *   1. kill-switch check (hard halt if open)
- *   2. circuit-breaker check (skip step while OPEN)
+ *   1. kill-switch check (global, tenant, or run scope)
+ *   2. circuit-breaker check (skip step while OPEN, allow probe after cooldown)
  *   3. budget reservation (pessimistic estimate; soft-cap -> downshift the
  *      step that crosses it; hard-cap -> BudgetExceededException in enforce)
  *   4. downshift application (model swap + tool drop + token tightening)
  *   5. the step itself, then usage reconciliation and loop detection
+ *
+ * Each agent run gets a unique run id (generated on the first step via
+ * PendingStep::isFirstStep()). The breaker and kill switch are keyed by
+ * that run id, so a loop in one run never blocks an independent run.
  *
  * Default behaviour is observe mode: detection and events run, but the
  * action ladder (downshift, break, kill) is inert unless enforce() is set.
@@ -44,16 +51,16 @@ use Laravel\Ai\PendingStep;
  *       ->forTenant(fn () => Auth::id())
  *       ->budget(['run' => [1.00, 2.00], 'tenant' => [5.00, 8.00]])
  *       ->downshiftAt(0.80, toModel: 'claude-haiku-4-5', withoutTools: ['DeepWebSearch'])
- *       ->breakLoops(maxRepeats: 3)
+ *       ->breakLoops(maxRepeats: 3, frequency: 8)
  *       ->enforce();
  *
  * One instance serves the steps of a single agent run; call reset() to start
- * a fresh run (clears the loop window and downshift tracking).
+ * a fresh run (clears the run id, loop window, and downshift tracking).
  */
 final class GuardAgentSteps
 {
     /**
-     * @param  Closure(void): string|null  $tenantResolver
+     * @var  Closure(void): string|int|Stringable|null
      */
     private Closure $tenantResolver;
 
@@ -82,6 +89,11 @@ final class GuardAgentSteps
 
     private int $windowSize = 50;
 
+    private int $frequencyThreshold = 8;
+
+    /** Whether the tenant resolver produced an uncastable value (warned once). */
+    private bool $tenantWarningLogged = false;
+
     private ?GuardRuntime $runtime = null;
 
     private ?LoopDetector $detector = null;
@@ -89,6 +101,9 @@ final class GuardAgentSteps
     private ?BudgetGuard $budget = null;
 
     private ?DownshiftEngine $downshift = null;
+
+    /** Unique run id, generated on the first step. */
+    private ?string $runId = null;
 
     /** Current effective model (downshifted); null = defer to the step's model. */
     private ?string $activeModel = null;
@@ -120,6 +135,9 @@ final class GuardAgentSteps
     /**
      * Resolve the tenant id from the authenticated principal. Required for
      * tenant-scoped budgets; without it tenant scopes are skipped.
+     *
+     * Accepts strings, integers, and Stringable objects. Any other type
+     * logs a warning (once per run) and returns null.
      */
     public function forTenant(Closure|string $resolver): self
     {
@@ -177,13 +195,22 @@ final class GuardAgentSteps
     }
 
     /**
-     * Configure loop-break thresholds.
+     * Configure loop-break thresholds. The optional frequency parameter
+     * overrides the config default (agent-guard.loop.frequency_threshold).
+     * When omitted, the value is read from config at runtime.
      */
-    public function breakLoops(int $maxRepeats = 3, float $maxStepGrowthRatio = 2.5, int $windowSize = 50): self
+    public function breakLoops(int $maxRepeats = 3, float $maxStepGrowthRatio = 2.5, int $windowSize = 50, ?int $frequency = null): self
     {
         $this->maxRepeats = $maxRepeats;
         $this->maxStepGrowthRatio = $maxStepGrowthRatio;
         $this->windowSize = $windowSize;
+
+        if ($frequency !== null) {
+            $this->frequencyThreshold = $frequency;
+        } else {
+            $configured = config('agent-guard.loop.frequency_threshold', 8);
+            $this->frequencyThreshold = is_numeric($configured) ? (int) $configured : 8;
+        }
 
         return $this;
     }
@@ -245,6 +272,14 @@ final class GuardAgentSteps
     }
 
     /**
+     * The current run id, or null before the first step.
+     */
+    public function runId(): ?string
+    {
+        return $this->runId;
+    }
+
+    /**
      * Middleware entry point (laravel/ai HasMiddleware pipe).
      *
      * @param  Closure(PendingStep): StepResult  $next
@@ -256,16 +291,29 @@ final class GuardAgentSteps
 
         $tenantId = $this->resolveTenant();
 
-        $runKey = $this->runKey($tenantId);
+        $runId = $this->ensureRunId();
 
-        // 1. Kill switch: an open switch hard-halts before any work.
-        if ($this->killSwitchEnabled && $this->killSwitchInstance($runtime)->isOpenFor('run', $runKey)) {
-            return StepResult::stop();
+        // 1. Kill switch: check global, tenant, and run scopes.
+        if ($this->killSwitchEnabled) {
+            $killSwitch = $this->killSwitchInstance($runtime);
+
+            if ($killSwitch->isGloballyOpen()
+                || ($tenantId !== null && $killSwitch->isOpenForTenant($tenantId))
+                || $killSwitch->isOpen('run', $runId)) {
+                return StepResult::stop();
+            }
         }
 
-        // 2. Circuit breaker: an OPEN breaker skips the step entirely.
-        if ($this->breakerInstance($runtime)->isOpen($runKey)) {
-            return StepResult::stop();
+        // 2. Circuit breaker: an OPEN breaker halts, but allows one probe
+        //    step through after the cooldown elapses.
+        $breaker = $this->breakerInstance($runtime);
+
+        if ($breaker->isOpen($runId)) {
+            if (! $breaker->allowProbe($runId)) {
+                return StepResult::stop();
+            }
+            // Probe allowed — the breaker is now HALF_OPEN. Let this step
+            // through; afterStep() will call probeResult() based on findings.
         }
 
         $budget = $this->budgetInstance($runtime);
@@ -279,19 +327,21 @@ final class GuardAgentSteps
         // 5. Run the step, then reconcile usage and detect loops.
         $result = $next($step);
 
-        $this->afterStep($budget, $result, $tenantId);
+        $this->afterStep($budget, $result, $tenantId, $runId, $breaker);
 
         return $result;
     }
 
     /**
-     * Reset per-run state: loop window and downshift tracking.
+     * Reset per-run state: run id, loop window, and downshift tracking.
      */
     public function reset(): void
     {
+        $this->runId = null;
         $this->detector = null;
         $this->activeModel = null;
         $this->sentModel = '';
+        $this->tenantWarningLogged = false;
     }
 
     // -----------------------------------------------------------------
@@ -316,7 +366,7 @@ final class GuardAgentSteps
                 windowSize: $this->windowSize,
                 maxRepeats: $this->maxRepeats,
                 maxStepGrowthRatio: $this->maxStepGrowthRatio,
-                frequencyThreshold: 3,
+                frequencyThreshold: $this->frequencyThreshold,
                 similarity: $this->resolveSimilarity($runtime),
                 similarityThreshold: 0.85,
                 exemptTools: $this->exemptTools,
@@ -402,7 +452,21 @@ final class GuardAgentSteps
     // -----------------------------------------------------------------
 
     /**
-     * Resolve the tenant id (null when no resolver is configured).
+     * Ensure the run id is set. Generated on the first step; if the
+     * middleware is attached mid-run, a new id is generated immediately.
+     */
+    private function ensureRunId(): string
+    {
+        if ($this->runId === null) {
+            $this->runId = bin2hex(random_bytes(8));
+        }
+
+        return $this->runId;
+    }
+
+    /**
+     * Resolve the tenant id (null when no resolver is configured or the
+     * value is uncastable). Accepts strings, integers, and Stringable.
      */
     private function resolveTenant(): ?string
     {
@@ -416,15 +480,29 @@ final class GuardAgentSteps
             return null;
         }
 
-        return is_string($tenant) && $tenant !== '' ? $tenant : null;
-    }
+        if (is_string($tenant) && $tenant !== '') {
+            return $tenant;
+        }
 
-    /**
-     * A stable per-run key for the breaker/kill-switch scopes.
-     */
-    private function runKey(?string $tenantId): string
-    {
-        return $tenantId === null ? 'run' : 'run:'.$tenantId;
+        if (is_int($tenant)) {
+            return (string) $tenant;
+        }
+
+        if ($tenant instanceof Stringable) {
+            $cast = (string) $tenant;
+
+            return $cast !== '' ? $cast : null;
+        }
+
+        if (! $this->tenantWarningLogged) {
+            Log::warning(
+                'agent-guard: forTenant() resolver returned an uncastable value',
+                ['type' => get_debug_type($tenant)],
+            );
+            $this->tenantWarningLogged = true;
+        }
+
+        return null;
     }
 
     /**
@@ -530,8 +608,9 @@ final class GuardAgentSteps
 
     /**
      * Post-step work: reconcile usage, then loop-detect the tool calls.
+     * If the breaker was in HALF_OPEN (probe), records the probe result.
      */
-    private function afterStep(BudgetGuard $budget, StepResult $result, ?string $tenantId): void
+    private function afterStep(BudgetGuard $budget, StepResult $result, ?string $tenantId, string $runId, CircuitBreaker $breaker): void
     {
         // Reconcile pessimistic reservations with exact usage.
         $this->reconcile($budget, $result, $tenantId);
@@ -540,6 +619,11 @@ final class GuardAgentSteps
         $response = $result->response();
 
         if ($response === null) {
+            // No response — if probing, treat as a successful probe.
+            if ($breaker->shouldPruneContext($runId)) {
+                $breaker->probeResult($runId, true);
+            }
+
             return;
         }
 
@@ -561,7 +645,15 @@ final class GuardAgentSteps
 
         // Enforce: a loop finding trips the breaker for the run.
         if ($this->enforce && $findings !== []) {
-            $this->breakerInstance($this->resolveRuntime())->trip($this->runKey($tenantId));
+            if ($breaker->shouldPruneContext($runId)) {
+                // Probe failed — reopen the breaker.
+                $breaker->probeResult($runId, false);
+            } else {
+                $breaker->trip($runId);
+            }
+        } elseif ($breaker->shouldPruneContext($runId)) {
+            // Probe succeeded — close the breaker.
+            $breaker->probeResult($runId, true);
         }
     }
 
@@ -760,8 +852,8 @@ final class GuardAgentSteps
             return ['agent'];
         }
 
-        // run scope.
-        return [$this->runKey($tenantId)];
+        // run scope — keyed by the unique run id.
+        return [$this->runId ?? 'run'];
     }
 
     private static function parseScope(string $scope): BudgetScope

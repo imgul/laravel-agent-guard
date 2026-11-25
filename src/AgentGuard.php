@@ -83,6 +83,16 @@ final class AgentGuard
     // -----------------------------------------------------------------
 
     /**
+     * Open the kill switch globally (halts every guarded run, everywhere).
+     *
+     * @return bool whether the switch transitioned to open.
+     */
+    public function killGlobal(): bool
+    {
+        return $this->runtime()->killSwitch->kill('global', \Imgul\AgentGuard\Loop\KillSwitch::GLOBAL_KEY);
+    }
+
+    /**
      * Open the kill switch for a tenant (incident response).
      *
      * @return bool whether the switch transitioned to open.
@@ -90,6 +100,16 @@ final class AgentGuard
     public function kill(string $tenantId): bool
     {
         return $this->runtime()->killSwitch->kill('tenant', $tenantId);
+    }
+
+    /**
+     * Open the kill switch for a specific agent run.
+     *
+     * @return bool whether the switch transitioned to open.
+     */
+    public function killRun(string $runId): bool
+    {
+        return $this->runtime()->killSwitch->kill('run', $runId);
     }
 
     /**
@@ -106,17 +126,28 @@ final class AgentGuard
      * Per-tenant status: mode, driver, kill-switch state, breaker state,
      * and budget spend vs configured caps.
      *
+     * The breaker is keyed per-run (a unique run id generated on the first
+     * step), so `status()` reports the aggregate: whether any breaker is
+     * open for any run under this tenant. Run-level detail is available
+     * via the breaker snapshot.
+     *
      * @return array{mode: string, driver: string, kill_switch: bool, breaker: string, budgets: array<string, array{cap: float|null, spent: float}>}
      */
     public function status(string $tenantId): array
     {
         $runtime = $this->runtime();
+        $breaker = $runtime->breaker->snapshot();
+
+        $anyOpen = array_filter(
+            $breaker,
+            fn (string $state) => $state === \Imgul\AgentGuard\Loop\LoopState::Open->value,
+        );
 
         return [
             'mode' => $this->mode(),
             'driver' => $this->driver(),
-            'kill_switch' => $runtime->killSwitch->isOpenFor('tenant', $tenantId),
-            'breaker' => $runtime->breaker->state('run:'.$tenantId)->value,
+            'kill_switch' => $runtime->killSwitch->isOpenForTenant($tenantId),
+            'breaker' => $anyOpen !== [] ? \Imgul\AgentGuard\Loop\LoopState::Open->value : \Imgul\AgentGuard\Loop\LoopState::Closed->value,
             'budgets' => $this->budgets($tenantId),
         ];
     }
@@ -175,7 +206,7 @@ final class AgentGuard
      */
     public function reconcile(string $runId): string
     {
-        return $this->runtime()->breaker->state('run:'.$runId)->value;
+        return $this->runtime()->breaker->state($runId)->value;
     }
 
     // -----------------------------------------------------------------
@@ -327,7 +358,11 @@ final class AgentGuard
             'tenant' => [$tenantId, date('Y-m-d')],
             'agent' => ['agent'],
             'tool' => ['agent'],
-            default => ['run:'.$tenantId],
+            // The middleware keys 'run' by a unique run id generated on the
+            // first step. Without access to that id, we fall back to 'run'
+            // as a diagnostic aggregate — per-run detail is queried via
+            // the middleware's own runId().
+            default => ['run'],
         };
     }
 

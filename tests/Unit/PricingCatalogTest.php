@@ -13,30 +13,30 @@ function catalog(): PricingCatalog
 it('loads the versioned catalog', function (): void {
     $catalog = catalog();
 
-    expect($catalog->version())->toBe('2026-11-25.1');
+    expect($catalog->version())->toBe('2026-11-25.2');
     expect($catalog->has('claude-haiku-4-5'))->toBeTrue();
 });
 
 it('computes USD cost from usage and model prices', function (): void {
     $catalog = catalog();
 
-    // claude-haiku-4-5: $0.80/1M input, $4.00/1M output.
-    // 1k in + 1k out = 0.001 * 0.8 + 0.001 * 4.0 = $0.0048
+    // claude-haiku-4-5: $1.00/1M input, $5.00/1M output.
+    // 1k in + 1k out = 0.001 * 1.0 + 0.001 * 5.0 = $0.006
     $usage = new TextUsage(inputTokens: 1000, outputTokens: 1000);
 
-    expect($catalog->usdFor($usage, 'claude-haiku-4-5'))->toBe(0.0048);
+    expect($catalog->usdFor($usage, 'claude-haiku-4-5'))->toBe(0.006);
 });
 
 it('accounts for cache and reasoning tokens', function (): void {
     $catalog = catalog();
 
-    // claude-haiku-4-5: input 0.80/1M, output 4.00/1M,
-    // cache_read 0.08/1M, reasoning 4.00/1M.
+    // claude-haiku-4-5: input 1.00/1M, output 5.00/1M,
+    // cache_read 0.10/1M, reasoning 5.00/1M.
     $usage = new TextUsage(inputTokens: 1000, outputTokens: 1000, cacheReadInputTokens: 1000, reasoningTokens: 500);
 
-    // 0.001*0.8 + 0.001*4.0 + 0.001*0.08 + 0.0005*4.0
-    // = 0.0008 + 0.004 + 0.00008 + 0.002 = $0.00688
-    expect($catalog->usdFor($usage, 'claude-haiku-4-5'))->toBe(0.00688);
+    // 0.001*1.0 + 0.001*5.0 + 0.001*0.1 + 0.0005*5.0
+    // = 0.001 + 0.005 + 0.0001 + 0.0025 = $0.0086
+    expect($catalog->usdFor($usage, 'claude-haiku-4-5'))->toBe(0.0086);
 });
 
 it('returns null USD for unknown models (token budgets still enforced)', function (): void {
@@ -74,16 +74,16 @@ it('builds from a decoded array via fromArray', function (): void {
 
     $catalog = PricingCatalog::fromArray($data);
 
-    expect($catalog->version())->toBe('2026-11-25.1')
+    expect($catalog->version())->toBe('2026-11-25.2')
         ->and($catalog->has('gpt-5'))->toBeTrue();
 });
 
 it('uses per-1M-token prices, not per-1k', function (): void {
     $catalog = catalog();
 
-    // If prices were per-1k, 1M tokens would cost $800 for haiku input.
-    // At per-1M, 1M input tokens cost exactly $0.80.
+    // If prices were per-1k, 1M tokens would cost $1000 for haiku input.
+    // At per-1M, 1M input tokens cost exactly $1.00.
     $usage = new TextUsage(inputTokens: 1_000_000, outputTokens: 0);
 
-    expect($catalog->usdFor($usage, 'claude-haiku-4-5'))->toBe(0.80);
+    expect($catalog->usdFor($usage, 'claude-haiku-4-5'))->toBe(1.00);
 });

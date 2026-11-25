@@ -52,7 +52,7 @@ $estimator = new CostEstimator($catalog, defaultOutputTokens: 300);
 // on the 3rd identical tool call.
 const FRONTIER_MODEL = 'claude-opus-4-1';
 const DOWNSHIFT_MODEL = 'claude-haiku-4-5';
-const SOFT_CAP_USD = 15.00;
+const SOFT_CAP_USD = 0.05;
 const MAX_REPEATS = 3;
 const TOTAL_STEPS = 5;
 

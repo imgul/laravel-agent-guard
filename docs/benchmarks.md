@@ -44,11 +44,11 @@ Scenario: a 5-step agent loop repeating the same tool call with
 growing context. Run with vs without the guard (enforce mode).
 ------------------------------------------------------------------------
                           Steps        Tokens           USD
-WITHOUT guard              5         14,500         62.50
-WITH guard (enforce)       3          5,200         17.24
+WITHOUT guard              5         11,000         0.26
+WITH guard (enforce)       3          5,700         0.05
 ------------------------------------------------------------------------
-Tokens saved               9,300
-USD saved                  45.26
+Tokens saved               5,300
+USD saved                  0.21
 ------------------------------------------------------------------------
 Outcome without guard: Unbounded spiral — loop ran to completion (provider 503 / hard-cap blowout)
 Outcome with guard:    Graceful degraded response — loop halted by breaker, model downshifted

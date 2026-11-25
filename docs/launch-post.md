@@ -10,12 +10,13 @@
 
 A runaway agent loop is the most expensive failure mode in production AI
 systems. A multi-step retry spiral can burn **$47,000 in 11 days** while your
-health checks happily report "working as designed." Solo builders report
-$200+ drained in a single afternoon.
+health checks happily report "working as designed." This isn't hypothetical —
+it happened to a production LangChain agent ([case study: the $47k infinite
+loop](https://github.com/vectara/awesome-agent-failures/blob/main/docs/case-studies/langchain-a2a-47k-infinite-loop.md)).
 
 The existing guard packages fail hard — an exception, a 402, a 503 — or
-estimate tokens at the HTTP wire. **None operate at the step level, and none
-downshift the model mid-run.** That is the gap `laravel-agent-guard` fills.
+estimate tokens at the HTTP wire. That is the gap `laravel-agent-guard`
+fills: it operates at the step level, and it downshifts the model mid-run.
 
 ## What it does
 

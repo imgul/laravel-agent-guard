@@ -36,6 +36,7 @@ final class CircuitBreaker
         private readonly int $cooldownSeconds = 60,
         private readonly bool $halfOpenProbe = true,
         private readonly ?Dispatcher $dispatcher = null,
+        private readonly int $ttlSeconds = 600,
     ) {
         $this->store = $store ?? new InMemorySwitchStore;
     }
@@ -190,7 +191,7 @@ final class CircuitBreaker
     /**
      * Load and decode the stored state for a key.
      *
-     * @return array{state?: LoopState, openedAt?: float}
+     * @return array{state?: string, openedAt?: float}
      */
     private function load(string $key): array
     {
@@ -204,7 +205,17 @@ final class CircuitBreaker
             $decoded = json_decode($raw, true);
 
             if (is_array($decoded)) {
-                return $decoded;
+                $data = [];
+
+                if (isset($decoded['state']) && is_string($decoded['state'])) {
+                    $data['state'] = $decoded['state'];
+                }
+
+                if (isset($decoded['openedAt']) && is_numeric($decoded['openedAt'])) {
+                    $data['openedAt'] = (float) $decoded['openedAt'];
+                }
+
+                return $data;
             }
         }
 
@@ -215,7 +226,7 @@ final class CircuitBreaker
     {
         $data = ['state' => $state->value, 'openedAt' => $openedAt ?? microtime(true)];
 
-        $this->store->set($this->storageKey($key), json_encode($data) ?: '');
+        $this->store->set($this->storageKey($key), json_encode($data) ?: '', $this->ttlSeconds);
     }
 
     private function storageKey(string $key): string

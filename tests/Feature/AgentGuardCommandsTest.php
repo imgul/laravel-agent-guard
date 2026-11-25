@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Imgul\AgentGuard\Budget\BudgetScope;
 use Imgul\AgentGuard\Facades\AgentGuard;
+use Imgul\AgentGuard\Middleware\GuardRuntime;
 use Illuminate\Support\Facades\Artisan;
 
 beforeEach(function (): void {
@@ -41,6 +42,45 @@ it('agent-guard:kill opens the kill switch and is reflected in status', function
 
     Artisan::call('agent-guard:status', ['tenant' => 'tenant-9']);
     expect(Artisan::output())->toContain('OPEN');
+});
+
+it('agent-guard:kill --run opens the kill switch for a specific run', function (): void {
+    $code = Artisan::call('agent-guard:kill', ['--run' => 'abc123']);
+
+    expect($code)->toBe(0);
+    expect(Artisan::output())->toContain('Kill switch opened for run [abc123]');
+
+    // The run-scope kill switch is open.
+    expect(app(GuardRuntime::class)->killSwitch->isOpen('run', 'abc123'))->toBeTrue();
+});
+
+it('agent-guard:kill --global opens the global kill switch', function (): void {
+    $code = Artisan::call('agent-guard:kill', ['--global' => true]);
+
+    expect($code)->toBe(0);
+    expect(Artisan::output())->toContain('Global kill switch opened');
+
+    // Every tenant should be halted.
+    expect(app(GuardRuntime::class)->killSwitch->isGloballyOpen())->toBeTrue();
+});
+
+it('agent-guard:kill without options opens the global kill switch', function (): void {
+    $code = Artisan::call('agent-guard:kill');
+
+    expect($code)->toBe(0);
+    expect(Artisan::output())->toContain('Global kill switch opened');
+
+    expect(app(GuardRuntime::class)->killSwitch->isGloballyOpen())->toBeTrue();
+});
+
+it('agent-guard:kill rejects multiple targeting options', function (): void {
+    $code = Artisan::call('agent-guard:kill', [
+        '--tenant' => 'acme',
+        '--run' => 'abc123',
+    ]);
+
+    expect($code)->toBe(1);
+    expect(Artisan::output())->toContain('Specify only one');
 });
 
 it('agent-guard:budgets reports spend against configured caps', function (): void {
