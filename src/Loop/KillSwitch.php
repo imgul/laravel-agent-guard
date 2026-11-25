@@ -21,7 +21,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 final class KillSwitch
 {
     /**
-     * @param  array<string, bool>  $open
+     * @param  array<string, array<string, bool>>  $open
      */
     public function __construct(
         private array $open = [],

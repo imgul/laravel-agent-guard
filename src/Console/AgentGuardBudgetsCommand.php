@@ -22,7 +22,13 @@ final class AgentGuardBudgetsCommand extends Command
 
     public function handle(): int
     {
-        $tenant = (string) $this->argument('tenant');
+        $tenant = $this->argument('tenant');
+
+        if (! is_string($tenant) || $tenant === '') {
+            $this->error('A tenant id is required.');
+
+            return self::FAILURE;
+        }
 
         $budgets = AgentGuard::budgets($tenant);
 

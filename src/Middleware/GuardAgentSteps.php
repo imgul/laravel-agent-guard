@@ -73,8 +73,6 @@ final class GuardAgentSteps
 
     private string $similarityStrategy = 'simhash';
 
-    private string $driver = 'redis';
-
     /** @var array<string, true> */
     private array $exemptTools = [];
 
@@ -142,7 +140,7 @@ final class GuardAgentSteps
     public function budget(array $caps): self
     {
         foreach ($caps as $scopeName => $cap) {
-            $scope = is_string($scopeName) && $scopeName !== ''
+            $scope = $scopeName !== ''
                 ? self::parseScope($scopeName)
                 : BudgetScope::Run;
 
@@ -159,6 +157,8 @@ final class GuardAgentSteps
     /**
      * Add a rung to the downshift ladder. Chainable for a multi-tier ladder;
      * tiers fire in order of threshold (lowest spend fraction first).
+     *
+     * @param  list<string>  $withoutTools
      */
     public function downshiftAt(
         float $threshold,
@@ -245,16 +245,6 @@ final class GuardAgentSteps
     }
 
     /**
-     * Ledger driver: 'redis' or 'database'.
-     */
-    public function driver(string $driver): self
-    {
-        $this->driver = $driver;
-
-        return $this;
-    }
-
-    /**
      * Middleware entry point (laravel/ai HasMiddleware pipe).
      *
      * @param  Closure(PendingStep): StepResult  $next
@@ -329,7 +319,7 @@ final class GuardAgentSteps
                 frequencyThreshold: 3,
                 similarity: $this->resolveSimilarity($runtime),
                 similarityThreshold: 0.85,
-                exemptTools: array_keys($this->exemptTools),
+                exemptTools: $this->exemptTools,
                 dispatcher: $runtime->dispatcher,
             );
         }
@@ -426,7 +416,7 @@ final class GuardAgentSteps
             return null;
         }
 
-        return $tenant === null || $tenant === '' ? null : (string) $tenant;
+        return is_string($tenant) && $tenant !== '' ? $tenant : null;
     }
 
     /**
@@ -526,10 +516,12 @@ final class GuardAgentSteps
         $this->activeModel = $tier->toModel;
         $this->sentModel = $tier->toModel;
 
+        $tierIndex = array_search($tier, $this->tiers, true);
+
         $this->dispatch(new ModelDownshifted(
             fromModel: $fromModel,
             toModel: $tier->toModel,
-            tier: array_search($tier, $this->tiers, true),
+            tier: $tierIndex === false ? null : $tierIndex,
             reason: 'budget-soft-cap',
         ));
 
@@ -556,7 +548,10 @@ final class GuardAgentSteps
         $findings = [];
 
         foreach ($response->toolCalls as $toolCall) {
-            $call = new ToolCall(tool: $toolCall->name, args: $toolCall->arguments);
+            /** @var array<string, mixed> $args */
+            $args = $toolCall->arguments;
+
+            $call = new ToolCall(tool: $toolCall->name, args: $args);
 
             $findings = array_merge($findings, $this->detectorInstance($this->resolveRuntime())->check(
                 $call,
@@ -585,7 +580,10 @@ final class GuardAgentSteps
             return;
         }
 
-        $usage = TextUsage::fromArray($response->usage->toArray());
+        /** @var array<string, mixed> $usageData */
+        $usageData = $response->usage->toArray();
+
+        $usage = TextUsage::fromArray($usageData);
         $model = $this->sentModel !== '' ? $this->sentModel : ($this->activeModel ?? '');
 
         foreach ($this->budgetCaps as $scope => $units) {
@@ -695,7 +693,7 @@ final class GuardAgentSteps
     /**
      * Estimate input tokens from the character length of message content.
      *
-     * @param  array<int, Message|array<string, mixed>|object>  $messages
+     * @param  array<int|string, Message|array<string, mixed>|object>  $messages
      */
     private function estimateMessageTokens(array $messages): int
     {
@@ -703,11 +701,13 @@ final class GuardAgentSteps
 
         foreach ($messages as $message) {
             if ($message instanceof Message) {
-                $chars += strlen((string) $message->content);
+                $chars += is_string($message->content) ? strlen($message->content) : 0;
             } elseif (is_object($message) && isset($message->content)) {
-                $chars += strlen((string) $message->content);
+                $content = $message->content;
+                $chars += is_string($content) ? strlen($content) : 0;
             } elseif (is_array($message) && isset($message['content'])) {
-                $chars += strlen((string) $message['content']);
+                $content = $message['content'];
+                $chars += is_string($content) ? strlen($content) : 0;
             }
         }
 

@@ -42,10 +42,11 @@ try {
         throw new RuntimeException('cannot read lua script: '.$luaPath);
     }
 
+    /** @var int|string $code */
     $code = $r->eval($script, [$key, 1.0, 0.0, 5.0, 86400], 1);
 
     fwrite(STDERR, 'db='.var_export($db, true).' prefix='.var_export($prefix, true).' spent='.var_export($pre, true).' code='.var_export($code, true));
-    echo $code;
+    echo (string) $code;
 } catch (Throwable $e) {
     fwrite(STDERR, 'concurrency-worker: '.$e->getMessage());
     exit(1);

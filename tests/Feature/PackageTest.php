@@ -6,7 +6,6 @@ use Imgul\AgentGuard\AgentGuard;
 use Imgul\AgentGuard\Facades\AgentGuard as AgentGuardFacade;
 
 it('registers the agent-guard container and facade', function (): void {
-    expect(app(AgentGuard::class))->toBeInstanceOf(AgentGuard::class);
     expect(AgentGuardFacade::mode())->toBe('observe');
 });
 

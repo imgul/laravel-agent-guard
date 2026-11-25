@@ -38,7 +38,7 @@ final class RedisLedger implements Ledger
     {
         $key = $reservation->key();
 
-        $code = (int) $this->redis->eval(
+        $result = $this->redis->eval(
             $this->script(),
             [
                 $key,
@@ -49,6 +49,8 @@ final class RedisLedger implements Ledger
             ],
             1,
         );
+
+        $code = is_numeric($result) ? (int) $result : 0;
 
         return match ($code) {
             0 => BudgetResult::denied($key, $this->spent($key)),
@@ -81,7 +83,7 @@ final class RedisLedger implements Ledger
             return 0.0;
         }
 
-        return (float) $value;
+        return is_numeric($value) ? (float) $value : 0.0;
     }
 
     private function script(): string

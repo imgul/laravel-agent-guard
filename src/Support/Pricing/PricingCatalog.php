@@ -33,7 +33,7 @@ final class PricingCatalog
     /**
      * Load the catalog from a JSON file.
      *
-     * @param  array<string, mixed>  $overrides  optional runtime/DB overrides keyed by model
+     * @param  array<string, array<string, float>>  $overrides  optional runtime/DB overrides keyed by model
      */
     public static function fromFile(string $path, array $overrides = []): self
     {
@@ -43,6 +43,11 @@ final class PricingCatalog
 
         $data = json_decode((string) file_get_contents($path), true);
 
+        if (! is_array($data)) {
+            throw new RuntimeException("Invalid pricing catalog JSON at: {$path}");
+        }
+
+        /** @var array<string, mixed> $data */
         return self::fromArray($data, $overrides);
     }
 
@@ -58,6 +63,10 @@ final class PricingCatalog
             throw new RuntimeException('Invalid pricing catalog: missing version or models.');
         }
 
+        if (! is_array($data['models'])) {
+            throw new RuntimeException('Invalid pricing catalog: models must be an array.');
+        }
+
         $models = [];
 
         foreach ($data['models'] as $model => $prices) {
@@ -66,8 +75,10 @@ final class PricingCatalog
             }
         }
 
+        $version = $data['version'];
+
         return new self(
-            version: (string) $data['version'],
+            version: is_string($version) ? $version : '',
             models: $models,
             overrides: self::normalizeOverrides($overrides),
         );
@@ -143,7 +154,7 @@ final class PricingCatalog
     }
 
     /**
-     * @return array<string, array<string, float>>
+     * @return array<string, float>|null
      */
     private function resolved(string $model): ?array
     {
@@ -155,7 +166,7 @@ final class PricingCatalog
     }
 
     /**
-     * @param  array<string, mixed>  $prices
+     * @param  array<mixed, mixed>  $prices
      * @return array<string, float>
      */
     private static function normalizePrices(array $prices): array
@@ -163,7 +174,7 @@ final class PricingCatalog
         $normalized = [];
 
         foreach (['input', 'output', 'cache_read', 'cache_write', 'reasoning'] as $key) {
-            if (isset($prices[$key])) {
+            if (isset($prices[$key]) && is_numeric($prices[$key])) {
                 $normalized[$key] = (float) $prices[$key];
             }
         }

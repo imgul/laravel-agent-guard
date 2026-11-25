@@ -40,7 +40,7 @@ final class AgentGuard
      */
     public function mode(): string
     {
-        return (string) ($this->config['mode'] ?? 'observe');
+        return $this->stringConfig('mode', 'observe');
     }
 
     /**
@@ -64,7 +64,7 @@ final class AgentGuard
      */
     public function driver(): string
     {
-        return (string) ($this->config['driver'] ?? 'redis');
+        return $this->stringConfig('driver', 'redis');
     }
 
     /**
@@ -106,7 +106,7 @@ final class AgentGuard
      * Per-tenant status: mode, driver, kill-switch state, breaker state,
      * and budget spend vs configured caps.
      *
-     * @return array<string, mixed>
+     * @return array{mode: string, driver: string, kill_switch: bool, breaker: string, budgets: array<string, array{cap: float|null, spent: float}>}
      */
     public function status(string $tenantId): array
     {
@@ -136,9 +136,14 @@ final class AgentGuard
         $runtime = $this->runtime();
         $defaults = (array) $this->config('budget.defaults', []);
 
+        /** @var array<string, array{cap: float|null, spent: float}> $result */
         $result = [];
 
         foreach ($defaults as $key => $cap) {
+            if (! is_string($key)) {
+                continue;
+            }
+
             $scope = $this->budgetScope($key);
             $unit = $this->budgetUnit($key);
 
@@ -203,7 +208,7 @@ final class AgentGuard
     /**
      * Assert that a LoopDetected event was recorded for the given tool.
      *
-     * @throws RuntimeException when no matching event was recorded.
+     * @throws \RuntimeException when no matching event was recorded.
      */
     public function assertLoopDetected(string $tool): void
     {
@@ -214,7 +219,7 @@ final class AgentGuard
      * Assert that a ModelDownshifted event was recorded with the given
      * from/to model pair.
      *
-     * @throws RuntimeException when no matching event was recorded.
+     * @throws \RuntimeException when no matching event was recorded.
      */
     public function assertDownshifted(string $from, string $to): void
     {
@@ -225,7 +230,7 @@ final class AgentGuard
      * Assert that a BudgetSoftCapReached event was recorded for the given
      * scope.
      *
-     * @throws RuntimeException when no matching event was recorded.
+     * @throws \RuntimeException when no matching event was recorded.
      */
     public function assertBudgetSoftCapReached(string $scope): void
     {
@@ -236,7 +241,7 @@ final class AgentGuard
      * Assert that a BudgetHardCapReached event was recorded for the given
      * scope.
      *
-     * @throws RuntimeException when no matching event was recorded.
+     * @throws \RuntimeException when no matching event was recorded.
      */
     public function assertBudgetHardCapReached(string $scope): void
     {
@@ -247,7 +252,7 @@ final class AgentGuard
      * Assert that a KillSwitchActivated event was recorded for the given
      * tenant.
      *
-     * @throws RuntimeException when no matching event was recorded.
+     * @throws \RuntimeException when no matching event was recorded.
      */
     public function assertKillSwitchActivated(string $tenant): void
     {
@@ -257,7 +262,7 @@ final class AgentGuard
     /**
      * Assert that a CircuitTripped event was recorded for the given key.
      *
-     * @throws RuntimeException when no matching event was recorded.
+     * @throws \RuntimeException when no matching event was recorded.
      */
     public function assertCircuitTripped(string $key): void
     {
@@ -267,7 +272,7 @@ final class AgentGuard
     /**
      * Assert that no budget denial was recorded.
      *
-     * @throws RuntimeException when a BudgetHardCapReached event was recorded.
+     * @throws \RuntimeException when a BudgetHardCapReached event was recorded.
      */
     public function assertNothingDenied(): void
     {
@@ -296,6 +301,17 @@ final class AgentGuard
         }
 
         return $this->fake;
+    }
+
+    /**
+     * Read a string configuration value, falling back to a default when the
+     * stored value is not a string. Avoids casting `mixed` directly.
+     */
+    private function stringConfig(string $key, string $default): string
+    {
+        $value = $this->config[$key] ?? $default;
+
+        return is_string($value) ? $value : $default;
     }
 
     /**

@@ -33,7 +33,7 @@ final class DatabaseLedger implements Ledger
                 ->first();
 
             $spent = $row['spent'] ?? 0.0;
-            $spent = (float) $spent;
+            $spent = is_numeric($spent) ? (float) $spent : 0.0;
 
             if ($reservation->hardCap > 0 && $spent + $reservation->cost > $reservation->hardCap) {
                 return BudgetResult::denied($key, $spent);
@@ -76,10 +76,15 @@ final class DatabaseLedger implements Ledger
             return 0.0;
         }
 
+        // $excess is a computed float (reservation cost minus actual
+        // cost), not user input, so the raw SQL expression is safe.
+        /** @var literal-string $sql */
+        $sql = $this->rawAdjustment($excess);
+
         DB::table(self::TABLE)
             ->where('key', $key)
             ->update([
-                'spent' => DB::raw('spent - '.(float) $excess),
+                'spent' => DB::raw($sql),
                 'updated_at' => now(),
             ]);
 
@@ -91,6 +96,17 @@ final class DatabaseLedger implements Ledger
         /** @var array<string, mixed>|null $row */
         $row = DB::table(self::TABLE)->where('key', $key)->first();
 
-        return $row === null ? 0.0 : (float) $row['spent'];
+        return $row === null ? 0.0 : (is_numeric($row['spent']) ? (float) $row['spent'] : 0.0);
+    }
+
+    /**
+     * Build the raw SQL adjustment expression for a numeric excess.
+     *
+     * @param  float  $excess
+     * @return string
+     */
+    private function rawAdjustment(float $excess): string
+    {
+        return 'spent - '.$excess;
     }
 }

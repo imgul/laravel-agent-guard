@@ -10,10 +10,16 @@ use Imgul\AgentGuard\Budget\Ledger;
 use Imgul\AgentGuard\Exceptions\BudgetExceededException;
 use Imgul\AgentGuard\Support\TextUsage;
 
+/**
+ * @param  array<string, float>  $spend
+ */
 function fakeLedger(array $spend = []): Ledger
 {
     return new class($spend) implements Ledger
     {
+        /**
+         * @param  array<string, float>  $spend
+         */
         public function __construct(private array $spend) {}
 
         public function reserve(BudgetReservation $reservation): BudgetResult

@@ -26,7 +26,7 @@ final class AgentGuardKillCommand extends Command
     {
         $tenant = $this->option('tenant');
 
-        if ($tenant === null || $tenant === '') {
+        if (! is_string($tenant) || $tenant === '') {
             $opened = AgentGuard::kill('__global_run__');
 
             $this->info(

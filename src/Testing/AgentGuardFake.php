@@ -169,7 +169,7 @@ final class AgentGuardFake extends GuardRuntime
      */
     public function recordedEvents(): array
     {
-        return $this->recorder->recorded();
+        return array_values(array_filter($this->recorder->recorded(), 'is_object'));
     }
 
     private function expect(bool $condition, string $message): void

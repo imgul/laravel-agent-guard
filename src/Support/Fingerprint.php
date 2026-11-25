@@ -103,7 +103,13 @@ final class Fingerprint
                 continue;
             }
 
-            $normalized[$key] = is_array($value) ? self::normalize($value) : $value;
+            if (is_array($value)) {
+                /** @var array<string, mixed> $nested */
+                $nested = $value;
+                $normalized[$key] = self::normalize($nested);
+            } else {
+                $normalized[$key] = $value;
+            }
         }
 
         return $normalized;

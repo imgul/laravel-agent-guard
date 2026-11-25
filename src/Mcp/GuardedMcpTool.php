@@ -91,7 +91,7 @@ trait GuardedMcpTool
     private array $guardExemptTools = [];
 
     /**
-     * @var Closure(Request):string|null
+     * @var Closure(Request):string
      */
     private Closure $guardPrincipalResolver;
 
@@ -122,23 +122,24 @@ trait GuardedMcpTool
      *   6. run the tool logic via run()
      *   7. reconcile usage + enforce loop findings (breaker trip)
      *
-     * @return Response|iterable
+     * @return Response|iterable<mixed>
      */
     public function handle(Request $request): Response|iterable
     {
         $runtime = $this->guardRuntimeInstance();
 
         $this->guardPrincipal = $this->guardResolvePrincipal($request);
-        $this->guardScopeKey = $this->guardScopeKey();
+        $scopeKey = $this->guardScopeKey();
+        $this->guardScopeKey = $scopeKey;
 
         // 1. Kill switch: an open switch hard-halts before any work.
         if ($this->guardKillSwitchEnabled
-            && $runtime->killSwitch->isOpenFor('tool', $this->guardScopeKey)) {
+            && $runtime->killSwitch->isOpenFor('tool', $scopeKey)) {
             return Response::error('Tool invocation halted: kill switch is open.');
         }
 
         // 2. Circuit breaker: an OPEN breaker skips the tool entirely.
-        if ($runtime->breaker->isOpen($this->guardScopeKey)) {
+        if ($runtime->breaker->isOpen($scopeKey)) {
             return Response::error('Tool invocation halted: circuit breaker is open.');
         }
 
@@ -161,7 +162,7 @@ trait GuardedMcpTool
 
         // 6. Enforce: a loop finding trips the breaker for this scope.
         if ($this->guardEnforce && $findings !== []) {
-            $runtime->breaker->trip($this->guardScopeKey);
+            $runtime->breaker->trip($scopeKey);
         }
 
         return $result;
@@ -171,7 +172,7 @@ trait GuardedMcpTool
      * The actual tool logic. Override this in the consuming tool — the
      * trait's handle() guards around it.
      *
-     * @return Response|iterable
+     * @return Response|iterable<mixed>
      */
     protected function run(Request $request): Response|iterable
     {
@@ -246,7 +247,7 @@ trait GuardedMcpTool
     {
         $this->guardPrincipalResolver = $resolver instanceof Closure
             ? $resolver
-            : fn (Request $request): string => (string) app($resolver);
+            : fn (Request $request): string => is_string(app($resolver)) ? app($resolver) : '';
 
         return $this;
     }
@@ -277,8 +278,8 @@ trait GuardedMcpTool
                 $principal = null;
             }
 
-            if ($principal !== null && $principal !== '') {
-                return (string) $principal;
+            if (is_string($principal) && $principal !== '') {
+                return $principal;
             }
         }
 
@@ -293,7 +294,11 @@ trait GuardedMcpTool
         if ($user !== null) {
             $id = $user->getAuthIdentifier();
 
-            if ($id !== null && $id !== '') {
+            if (is_string($id) && $id !== '') {
+                return $id;
+            }
+
+            if (is_int($id)) {
                 return (string) $id;
             }
         }
@@ -327,7 +332,8 @@ trait GuardedMcpTool
     {
         $config = $this->guardBudgetConfig();
 
-        $calls = (int) ($config['tool_daily_calls'] ?? 0);
+        $callsValue = $config['tool_daily_calls'] ?? 0;
+        $calls = is_numeric($callsValue) ? (int) $callsValue : 0;
 
         if ($calls > 0) {
             $this->guardReserveCalls($runtime, $calls);
@@ -402,8 +408,12 @@ trait GuardedMcpTool
                 continue;
             }
 
-            $soft = (float) ($cap[0] ?? 0.0);
-            $hard = (float) ($cap[1] ?? 0.0);
+            if (! is_array($cap)) {
+                continue;
+            }
+
+            $soft = is_numeric($cap[0] ?? null) ? (float) $cap[0] : 0.0;
+            $hard = is_numeric($cap[1] ?? null) ? (float) $cap[1] : 0.0;
 
             $budget->cap(BudgetScope::Tool, $soft, $hard, $unit);
 
@@ -437,11 +447,12 @@ trait GuardedMcpTool
         );
 
         $config = $this->guardBudgetConfig();
-        $maxRepeats = isset($config['max_repeats']) ? (int) $config['max_repeats'] : null;
+        $maxRepeatsValue = $config['max_repeats'] ?? null;
+        $maxRepeats = is_numeric($maxRepeatsValue) ? (int) $maxRepeatsValue : null;
 
         $detector = $runtime->loopDetectorFor(
             $this->guardScopeKey(),
-            array_keys($this->guardExemptTools),
+            $this->guardExemptTools,
             $maxRepeats,
         );
 
@@ -515,7 +526,11 @@ trait GuardedMcpTool
      */
     private function guardBudgetConfig(): array
     {
-        return $this->guardBudgetConfig ??= $this->guardBudget();
+        if ($this->guardBudgetConfig === null) {
+            $this->guardBudgetConfig = $this->guardBudget();
+        }
+
+        return $this->guardBudgetConfig;
     }
 
     /**
