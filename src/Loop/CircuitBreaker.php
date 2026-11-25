@@ -204,7 +204,17 @@ final class CircuitBreaker
             $decoded = json_decode($raw, true);
 
             if (is_array($decoded)) {
-                return $decoded;
+                $data = [];
+
+                if (isset($decoded['state']) && is_string($decoded['state'])) {
+                    $data['state'] = $decoded['state'];
+                }
+
+                if (isset($decoded['openedAt']) && is_numeric($decoded['openedAt'])) {
+                    $data['openedAt'] = (float) $decoded['openedAt'];
+                }
+
+                return $data;
             }
         }
 
