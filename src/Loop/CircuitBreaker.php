@@ -190,7 +190,7 @@ final class CircuitBreaker
     /**
      * Load and decode the stored state for a key.
      *
-     * @return array{state?: LoopState, openedAt?: float}
+     * @return array{state?: string, openedAt?: float}
      */
     private function load(string $key): array
     {

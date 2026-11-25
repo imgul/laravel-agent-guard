@@ -26,10 +26,12 @@ final class RedisSwitchStore implements SwitchStore
 
     public function set(string $key, mixed $value, int $ttl = 0): void
     {
+        $string = is_string($value) ? $value : (string) json_encode($value);
+
         if ($ttl > 0) {
-            $this->redis->setex($key, $ttl, (string) $value);
+            $this->redis->setex($key, $ttl, $string);
         } else {
-            $this->redis->set($key, (string) $value);
+            $this->redis->set($key, $string);
         }
     }
 
@@ -52,9 +54,7 @@ final class RedisSwitchStore implements SwitchStore
 
         while ($keys = $this->redis->scan($iterator, $prefix.'*', 100)) {
             foreach ($keys as $key) {
-                if ($key !== false) {
-                    $matching[] = (string) $key;
-                }
+                $matching[] = (string) $key;
             }
         }
 
