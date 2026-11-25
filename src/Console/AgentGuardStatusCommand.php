@@ -45,6 +45,7 @@ final class AgentGuardStatusCommand extends Command
 
     private function showTenant(string $tenant, GuardRuntime $runtime): void
     {
+        /** @var array{mode: string, driver: string, kill_switch: bool, breaker: string, budgets: array<string, array{cap: float|null, spent: float}>} $status */
         $status = AgentGuard::status($tenant);
 
         $this->line('<fg=green>Tenant: '.$tenant.'</>');

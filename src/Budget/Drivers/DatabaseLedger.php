@@ -76,12 +76,15 @@ final class DatabaseLedger implements Ledger
             return 0.0;
         }
 
+        // $excess is a computed float (reservation cost minus actual
+        // cost), not user input, so the raw SQL expression is safe.
+        /** @var literal-string $sql */
+        $sql = $this->rawAdjustment($excess);
+
         DB::table(self::TABLE)
             ->where('key', $key)
             ->update([
-                // $excess is a computed float (reservation cost minus actual
-                // cost), not user input, so the raw SQL expression is safe.
-                'spent' => DB::raw($this->rawAdjustment($excess)),
+                'spent' => DB::raw($sql),
                 'updated_at' => now(),
             ]);
 
