@@ -45,7 +45,7 @@ it('agent-guard:kill opens the kill switch and is reflected in status', function
 
 it('agent-guard:budgets reports spend against configured caps', function (): void {
     // Seed the in-memory ledger for the tenant's daily USD budget.
-    $fake = AgentGuard::fakeOrNull();
+    $fake = AgentGuard::fake();
     $fake->budgetGuard()
         ->cap(BudgetScope::Tenant, softCap: 1.00, hardCap: 15.00)
         ->reserve(BudgetScope::Tenant, ['tenant-1', date('Y-m-d')], 3.25);

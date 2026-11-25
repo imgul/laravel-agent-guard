@@ -29,7 +29,7 @@ it('records and asserts a kill switch activation', function (): void {
 });
 
 it('records and asserts a loop detection for a tool', function (): void {
-    $fake = AgentGuard::fakeOrNull();
+    $fake = AgentGuard::fake();
     $detector = $fake->loopDetector([]);
 
     $call = new ToolCall(tool: 'search', args: ['q' => 'loop']);
@@ -43,7 +43,7 @@ it('records and asserts a loop detection for a tool', function (): void {
 });
 
 it('records and asserts a budget soft-cap reach', function (): void {
-    $fake = AgentGuard::fakeOrNull();
+    $fake = AgentGuard::fake();
     $guard = $fake->budgetGuard();
     $guard->cap(BudgetScope::Tenant, softCap: 1.00, hardCap: 2.00);
 
@@ -57,7 +57,7 @@ it('records and asserts a budget soft-cap reach', function (): void {
 });
 
 it('records and asserts a budget hard-cap reach (observe, no throw)', function (): void {
-    $fake = AgentGuard::fakeOrNull();
+    $fake = AgentGuard::fake();
     $guard = $fake->budgetGuard();
     $guard->cap(BudgetScope::Tenant, softCap: 1.00, hardCap: 1.00);
 
@@ -70,7 +70,7 @@ it('records and asserts a budget hard-cap reach (observe, no throw)', function (
 });
 
 it('records and asserts a downshift', function (): void {
-    $fake = AgentGuard::fakeOrNull();
+    $fake = AgentGuard::fake();
     $fake->dispatcher?->dispatch(new ModelDownshifted(
         fromModel: 'claude-opus-4-1',
         toModel: 'claude-haiku-4-5',
