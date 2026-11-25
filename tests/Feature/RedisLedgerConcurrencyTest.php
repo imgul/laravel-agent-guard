@@ -48,11 +48,10 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
 
     // Fire 10 concurrent reservations. Each is a single atomic Lua round-trip,
     // so the server serializes them — no two workers can pass the check and
-    // each spend past the cap. The workers run as separate PHP processes that
-    // must connect to the *same* Redis database the parent reads from, so
-    // capture the parent client's host/port/database and inject them. The
-    // Lua script path is absolute (computed here) because __DIR__ is not
-    // reliable inside a `php -r` inline script.
+    // each spend past the cap. The workers run as separate PHP processes (a
+    // standalone worker script spawned with proc_open) that must connect to
+    // the *same* Redis database the parent reads from, so capture the parent
+    // client's host/port/database and pass them as arguments.
     $luaPath = __DIR__.'/../../src/Budget/Lua/reserve.lua';
     $host = $client->getHost();
     $port = $client->getPort();
@@ -63,22 +62,18 @@ it('holds a $5 daily cap under 10 concurrent $1 reservations with zero overspend
     $workers = [];
     $stdoutPipes = [];
     $stderrPipes = [];
+    $workerScript = __DIR__.'/../concurrency-worker.php';
 
     for ($i = 0; $i < 10; $i++) {
-        $command = sprintf(
-            '%s -r %s',
+        $command = implode(' ', [
             escapeshellarg(PHP_BINARY),
-            escapeshellarg(
-                '$r = new Redis(); $r->connect('.var_export($host, true).', '.var_export($port, true).'); '.
-                '$r->select('.var_export($db, true).'); '.
-                '$pre = $r->get('.var_export($key, true).'); '.
-                'fwrite(STDERR, "db=".var_export('.var_export($db, true).', true).' spent=".var_export($pre, true).'\\n"); '.
-                '$script = file_get_contents('.var_export($luaPath, true).'); '.
-                '$code = $r->eval($script, ['.var_export($key, true).', 1.0, 0.0, 5.0, 86400], 1); '.
-                'fwrite(STDERR, "code=".var_export($code, true).'\\n"); '.
-                'echo $code;'
-            ),
-        );
+            escapeshellarg($workerScript),
+            escapeshellarg((string) $host),
+            escapeshellarg((string) $port),
+            escapeshellarg((string) $db),
+            escapeshellarg($key),
+            escapeshellarg($luaPath),
+        ]);
 
         $procPipes = [];
         $workers[$i] = proc_open(
