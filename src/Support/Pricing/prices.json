@@ -1,7 +1,7 @@
 {
-    "version": "2026-11-24.1",
-    "unit": "usd_per_1k_tokens",
-    "source": "starter catalog — refreshed by the scheduled prices sync workflow",
+    "version": "2026-11-25.1",
+    "unit": "usd_per_1m_tokens",
+    "source": "refreshed from provider pricing pages — verified 2026-11-25",
     "models": {
         "gpt-5": {
             "input": 1.25,

@@ -5,6 +5,53 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-11-25
+
+### Fixed
+
+- **Kill switch scope mismatch.** `AgentGuard::kill($tenant)` opened scope
+  `tenant`, but the middleware checked scope `run` — they never matched, so
+  kill/unkill and `agent-guard:kill` had no effect on guarded agents. The
+  middleware now checks global, tenant, and run scopes. Added
+  `AgentGuard::killGlobal()` for the global switch.
+- **Circuit breaker never closed.** The middleware only called `isOpen()`;
+  nothing ever called `probeResult()` or used the cooldown. The breaker was
+  keyed by `run:{tenant}`, so a loop in one run blocked all later runs for
+  that tenant. Now keyed per-run (unique run ID), with HALF_OPEN probe
+  lifecycle: after cooldown, one probe step is allowed through;
+  `probeResult()` closes on success or re-trips on failure.
+- **Frequency detector too strict.** Tripped on the 3rd call to the same
+  tool with any arguments. Now has its own configurable threshold
+  (default **8**), separate from `maxRepeats`, so normal agents that
+  legitimately call `search` several times with different queries are not
+  flagged.
+- **Pricing unit bug.** `prices.json` declared `usd_per_1k_tokens` but the
+  values were per-1M prices, making USD budgets ~1000× too high. Changed
+  the unit to `usd_per_1m_tokens` and divide by 1,000,000 in
+  `PricingCatalog`. Bumped catalog version to `2026-11-25.1`.
+- **`forTenant()` silently dropped integer tenants.** Non-string returns
+  became null, skipping tenant budgets. Now casts `int` and `Stringable`
+  to string.
+- **Benchmark docs didn't match the code.** Sample output was illustrative
+  only. Rescaled `SOFT_CAP_USD` to 0.05 so the downshift fires at correct
+  prices.
+- **CI red.** The testbench install step failed on `composer require`.
+  Fixed the workflow to use `composer require --dev` + `composer install`.
+- **Launch post claims.** Removed the unsourced "$200+ drained" line and
+  the "None operate at the step level" claim (`promptphp/intercept-budget-guard`
+  is also per-step). Linked the $47k case study source.
+
+### Added
+
+- **Cross-process switch persistence.** Kill switch and circuit breaker
+  state now persists through a `SwitchStore` (Redis, cache/database, or
+  in-memory for tests). `php artisan agent-guard:kill` now affects Horizon
+  workers, Octane, and web requests — not just the CLI process.
+- **`frequency_threshold` config.** New config key for the frequency
+  detector threshold, plus `breakLoops(frequency: …)` fluent API.
+- **`killGlobal()` method.** Open the global kill switch — halts every
+  guarded run everywhere.
+
 ## [1.0.0] - 2026-11-24
 
 The first stable release: a step-aware runtime-safety layer for `laravel/ai`
